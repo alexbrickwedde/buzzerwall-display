@@ -101,20 +101,20 @@ void setup()
     lv_label_set_text(label, "Toggle");
     lv_obj_center(label);
 
-    seven1 = lv_7seg_create(lv_scr_act(), 150, 320);
+    seven1 = lv_7seg_create(lv_scr_act(), 170, 320);
     lv_obj_align(seven1, LV_ALIGN_TOP_LEFT, 5, 5);
 
-    seven2 = lv_7seg_create(lv_scr_act(), 150, 320);
-    lv_obj_align(seven2, LV_ALIGN_TOP_LEFT, 5 + 155, 5);
+    seven2 = lv_7seg_create(lv_scr_act(), 170, 320);
+    lv_obj_align(seven2, LV_ALIGN_TOP_LEFT, 5 + 150, 5);
 
-    seven3 = lv_7seg_create(lv_scr_act(), 150, 320);
-    lv_obj_align(seven3, LV_ALIGN_TOP_LEFT, 5 + 155 * 2, 5);
+    seven3 = lv_7seg_create(lv_scr_act(), 170, 320);
+    lv_obj_align(seven3, LV_ALIGN_TOP_LEFT, 5 + 150 * 2, 5);
 
-    seven4 = lv_7seg_create(lv_scr_act(), 150, 320);
-    lv_obj_align(seven4, LV_ALIGN_TOP_LEFT, 5 + 155 * 3, 5);
+    seven4 = lv_7seg_create(lv_scr_act(), 170, 320);
+    lv_obj_align(seven4, LV_ALIGN_TOP_LEFT, 5 + 150 * 3, 5);
 
-    seven5 = lv_7seg_create(lv_scr_act(), 150, 320  );
-    lv_obj_align(seven5, LV_ALIGN_TOP_LEFT, 5 + 155 * 4, 5);
+    seven5 = lv_7seg_create(lv_scr_act(), 170, 320  );
+    lv_obj_align(seven5, LV_ALIGN_TOP_LEFT, 5 + 150 * 4, 5);
 
     lvgl_port_unlock();
 }

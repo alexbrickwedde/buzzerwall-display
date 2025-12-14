@@ -75,25 +75,25 @@ lv_obj_t * lv_7seg_create(lv_obj_t * parent, lv_coord_t w, lv_coord_t h)
     // seg a (top) -- horizontal
     lv_obj_t * seg_a = lv_obj_create(cont);
     lv_obj_set_size(seg_a, w - 2.5 * thick, thick);
-    lv_obj_align(seg_a, LV_ALIGN_TOP_MID, 0, thick/2);
+    lv_obj_align(seg_a, LV_ALIGN_TOP_LEFT, thick*1.0, thick/2);
     lv_obj_add_style(seg_a, &s_on, 0);
 
     // seg b (top-right)
     lv_obj_t * seg_b = lv_obj_create(cont);
     lv_obj_set_size(seg_b, thick, h/2 - thick * 1.50);
-    lv_obj_align(seg_b, LV_ALIGN_TOP_RIGHT, -thick/2, thick * 1.25);
+    lv_obj_align(seg_b, LV_ALIGN_TOP_RIGHT, -thick, thick * 1.25);
     lv_obj_add_style(seg_b, &s_on, 0);
 
     // seg c (bottom-right)
     lv_obj_t * seg_c = lv_obj_create(cont);
     lv_obj_set_size(seg_c, thick, h/2 - thick * 1.5);
-    lv_obj_align(seg_c, LV_ALIGN_BOTTOM_RIGHT, -thick/2, -thick * 1.25);
+    lv_obj_align(seg_c, LV_ALIGN_BOTTOM_RIGHT, -thick, -thick * 1.25);
     lv_obj_add_style(seg_c, &s_on, 0);
 
     // seg d (bottom)
     lv_obj_t * seg_d = lv_obj_create(cont);
     lv_obj_set_size(seg_d, w - 2.5*thick, thick);
-    lv_obj_align(seg_d, LV_ALIGN_BOTTOM_MID, 0, -thick/2);
+    lv_obj_align(seg_d, LV_ALIGN_BOTTOM_LEFT, thick*1.0, -thick/2);
     lv_obj_add_style(seg_d, &s_on, 0);
 
     // seg e (bottom-left)
@@ -111,7 +111,7 @@ lv_obj_t * lv_7seg_create(lv_obj_t * parent, lv_coord_t w, lv_coord_t h)
     // seg g (middle horizontal)
     lv_obj_t * seg_g = lv_obj_create(cont);
     lv_obj_set_size(seg_g, w - 2.5*thick, thick);
-    lv_obj_align(seg_g, LV_ALIGN_CENTER, 0, 0);
+    lv_obj_align(seg_g, LV_ALIGN_LEFT_MID, thick*1.0, 0);
     lv_obj_add_style(seg_g, &s_on, 0);
 
     // dot
