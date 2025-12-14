@@ -81,22 +81,6 @@ void setup()
     lv_obj_align_to(label_3, label_2, LV_ALIGN_OUT_BOTTOM_MID, 0, 90);
 
 
-    seven1 = lv_7seg_create(lv_scr_act(), 150, 320);
-    lv_obj_align(seven1, LV_ALIGN_TOP_LEFT, 5, 5);
-
-    seven2 = lv_7seg_create(lv_scr_act(), 150, 320);
-    lv_obj_align(seven2, LV_ALIGN_TOP_LEFT, 5 + 155, 5);
-
-    seven3 = lv_7seg_create(lv_scr_act(), 150, 320);
-    lv_obj_align(seven3, LV_ALIGN_TOP_LEFT, 5 + 155 * 2, 5);
-
-    seven4 = lv_7seg_create(lv_scr_act(), 150, 320);
-    lv_obj_align(seven4, LV_ALIGN_TOP_LEFT, 5 + 155 * 3, 5);
-
-    seven5 = lv_7seg_create(lv_scr_act(), 150, 320  );
-    lv_obj_align(seven5, LV_ALIGN_TOP_LEFT, 5 + 155 * 4, 5);
-
-
     lv_obj_t * label;
 
     lv_obj_t * btn1 = lv_btn_create(lv_scr_act());
@@ -116,6 +100,21 @@ void setup()
     label = lv_label_create(btn2);
     lv_label_set_text(label, "Toggle");
     lv_obj_center(label);
+
+    seven1 = lv_7seg_create(lv_scr_act(), 150, 320);
+    lv_obj_align(seven1, LV_ALIGN_TOP_LEFT, 5, 5);
+
+    seven2 = lv_7seg_create(lv_scr_act(), 150, 320);
+    lv_obj_align(seven2, LV_ALIGN_TOP_LEFT, 5 + 155, 5);
+
+    seven3 = lv_7seg_create(lv_scr_act(), 150, 320);
+    lv_obj_align(seven3, LV_ALIGN_TOP_LEFT, 5 + 155 * 2, 5);
+
+    seven4 = lv_7seg_create(lv_scr_act(), 150, 320);
+    lv_obj_align(seven4, LV_ALIGN_TOP_LEFT, 5 + 155 * 3, 5);
+
+    seven5 = lv_7seg_create(lv_scr_act(), 150, 320  );
+    lv_obj_align(seven5, LV_ALIGN_TOP_LEFT, 5 + 155 * 4, 5);
 
     lvgl_port_unlock();
 }

@@ -74,7 +74,7 @@ lv_obj_t * lv_7seg_create(lv_obj_t * parent, lv_coord_t w, lv_coord_t h)
     // Create segments. We'll use simple rectangles and position them with fixed offsets.
     // seg a (top) -- horizontal
     lv_obj_t * seg_a = lv_obj_create(cont);
-    lv_obj_set_size(seg_a, w - 2 * thick, thick);
+    lv_obj_set_size(seg_a, w - 2.5 * thick, thick);
     lv_obj_align(seg_a, LV_ALIGN_TOP_MID, 0, thick/2);
     lv_obj_add_style(seg_a, &s_on, 0);
 
@@ -92,7 +92,7 @@ lv_obj_t * lv_7seg_create(lv_obj_t * parent, lv_coord_t w, lv_coord_t h)
 
     // seg d (bottom)
     lv_obj_t * seg_d = lv_obj_create(cont);
-    lv_obj_set_size(seg_d, w - 2*thick, thick);
+    lv_obj_set_size(seg_d, w - 2.5*thick, thick);
     lv_obj_align(seg_d, LV_ALIGN_BOTTOM_MID, 0, -thick/2);
     lv_obj_add_style(seg_d, &s_on, 0);
 
@@ -110,7 +110,7 @@ lv_obj_t * lv_7seg_create(lv_obj_t * parent, lv_coord_t w, lv_coord_t h)
 
     // seg g (middle horizontal)
     lv_obj_t * seg_g = lv_obj_create(cont);
-    lv_obj_set_size(seg_g, w - 2*thick, thick);
+    lv_obj_set_size(seg_g, w - 2.5*thick, thick);
     lv_obj_align(seg_g, LV_ALIGN_CENTER, 0, 0);
     lv_obj_add_style(seg_g, &s_on, 0);
 
@@ -122,8 +122,6 @@ lv_obj_t * lv_7seg_create(lv_obj_t * parent, lv_coord_t w, lv_coord_t h)
     lv_obj_align(seg_dot, LV_ALIGN_BOTTOM_RIGHT, 0, 0);
     lv_obj_add_style(seg_dot, &s_on, 0);
 
-    lv_obj_add_flag(seg_b, LV_OBJ_FLAG_HIDDEN); // we'll set proper via set_digit below
-    // Hide then call set_digit to set correct segments
     lv_7seg_set_digit(cont, ' ', false);
 
     return cont;
