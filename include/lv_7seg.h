@@ -10,3 +10,4 @@ lv_obj_t * lv_7seg_create(lv_obj_t * parent, lv_coord_t w, lv_coord_t h);
 
 // Set the displayed digit (0-9). If out of range, the display is cleared.
 void lv_7seg_set_digit(lv_obj_t * obj, const char digit, const bool dot);
+void lv_7seg_set_color(lv_obj_t * obj, lv_color_t color);

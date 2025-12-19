@@ -165,3 +165,15 @@ void lv_7seg_set_digit(lv_obj_t * obj, const char digit, const bool dot)
     }
     set_seg_on(obj, 7, dot);
 }
+
+void lv_7seg_set_color(lv_obj_t * obj, lv_color_t color)
+{
+    if (!obj) return;
+
+    for (int i = 0; i < 8; ++i) {
+        lv_obj_t * seg = lv_obj_get_child(obj, i);
+        if (seg) {
+            lv_obj_set_style_bg_color(seg, color, 0);
+        }
+    }
+}
