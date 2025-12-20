@@ -192,6 +192,7 @@ void game_tick() {
                 char meldung[32];
                 snprintf(meldung, sizeof(meldung), "Runde %d", current_round);
                 lvgl_port_lock(-1);
+                lv_obj_set_style_bg_color(lv_scr_act(), lv_color_hex(0xc5c405), LV_PART_MAIN);
                 lv_label_set_text(label_1, meldung);
                 lvgl_port_unlock();
                 game_state = GAME_WAIT_FOR_BUZZER1;
