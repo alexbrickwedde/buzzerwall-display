@@ -1,3 +1,6 @@
+
+TODO: buzzer press increasing id
+
 #include <Arduino.h>
 #include <esp_display_panel.hpp>
 
@@ -5,9 +8,12 @@
 #include "lvgl_v8_port.h"
 #include <demos/lv_demos.h>
 #include "lv_7seg.h"
+#include "driver/twai.h"
 
 #include <vector>
 #include <cstring>
+
+static void twai_send_message(uint32_t id, const uint8_t* data, uint8_t len);
 
 using namespace esp_panel::drivers;
 using namespace esp_panel::board;
@@ -111,9 +117,21 @@ void display_time(uint32_t time_ms) {
     }
 }
 
+uint32_t next_can_packet_millis = 0;
+
 void game_tick() {
+    bool bSendCan = millis() > next_can_packet_millis;
+    if(bSendCan) {
+        next_can_packet_millis = millis() + 1000;
+    }
+
     switch (game_state) {
         case GAME_IDLE:
+            if (bSendCan) {
+                uint8_t data[8] = {0};
+                data[0] = 0x00;
+                twai_send_message(0x7ff, data, 1);
+            }
             break;
 
         case GAME_READYSETGO:
@@ -205,18 +223,25 @@ void game_tick() {
             break;
 
         case GAME_WAIT_FOR_BUZZER1:
-            if (millis() < random_start_time) {
-                break;
-            }
-            buzzers[current_buzzer].waiting_for_press = true;
-            local_time = millis();
+            {
+                if (millis() < random_start_time) {
+                    break;
+                }
+                buzzers[current_buzzer].waiting_for_press = true;
+                local_time = millis();
 
-            char meldung[32];
-            snprintf(meldung, sizeof(meldung), "Buzzer %d !!!", current_buzzer + 1);
-            lvgl_port_lock(-1);
-            lv_label_set_text(label_1, meldung);
-            lvgl_port_unlock();
-            game_state = GAME_WAIT_FOR_BUZZER2;
+                uint8_t data[8] = {0};
+                data[0] = 0x01;
+                twai_send_message(buzzers[current_buzzer].buzzer_id | 0x100, data, 1);
+
+                char meldung[32];
+                snprintf(meldung, sizeof(meldung), "Buzzer %d !!!", buzzers[current_buzzer].buzzer_id);
+                lvgl_port_lock(-1);
+                lv_label_set_text(label_1, meldung);
+                lvgl_port_unlock();
+
+                game_state = GAME_WAIT_FOR_BUZZER2;
+            }
             break;
 
         case GAME_WAIT_FOR_BUZZER2:
@@ -250,19 +275,33 @@ void game_tick() {
                         if (buzzer.waiting_for_press) {
                             total_time += buzzer.press_time;
                             game_state = GAME_ROUND_COMPLETE;
+                            break;
                         } else {
                             total_time += 1000; // Add 1000ms penalty for incorrect buzzer
                         }
                     }
                 }
+
+                if (bSendCan) {
+                    uint8_t data[8] = {0};
+                    data[0] = 0x01;
+                    twai_send_message(buzzers[current_buzzer].buzzer_id | 0x100, data, 1);
+                }
             }
             break;
 
         case GAME_ROUND_COMPLETE:
-            for (BuzzerButton &buzzer : buzzers) {
-                buzzer.clear();
+            {
+                if (bSendCan) {
+                    uint8_t data[8] = {0};
+                    data[0] = 0x00;
+                    twai_send_message(0x7ff, data, 1);
+                }
+                for (BuzzerButton &buzzer : buzzers) {
+                    buzzer.clear();
+                }
+                game_state = GAME_STARTING;
             }
-            game_state = GAME_STARTING;
             break;
 
         case GAME_FINISHED:
@@ -337,6 +376,7 @@ static void event_handler_cancel(lv_event_t * e)
         lv_obj_add_flag(seven4, LV_OBJ_FLAG_HIDDEN);
         lv_obj_add_flag(seven5, LV_OBJ_FLAG_HIDDEN);
         lv_label_set_text(label_1, "Spiel abgebrochen");
+        lv_obj_set_style_bg_color(lv_scr_act(), lv_color_hex(0xe4032e), LV_PART_MAIN);
         lvgl_port_unlock();
         game_state = GAME_IDLE;
     }
@@ -355,9 +395,124 @@ static void event_handler_test(lv_event_t * e)
     }
 }
 
+static void twai_send_message(uint32_t id, const uint8_t* data, uint8_t len) {
+  twai_message_t message;
+  message.extd = (id & 0x80000000) != 0;
+  message.identifier = id & 0x1FFFFFFF;
+  message.data_length_code = len;
+  for (int i = 0; i < message.data_length_code; i++) {
+    message.data[i] = data[i];
+  }
+  if (twai_transmit(&message, pdMS_TO_TICKS(1000)) == ESP_OK) {
+    printf("Message queued for transmission\n"); // Print success message
+  } else {
+    printf("Failed to queue message for transmission\n"); // Print failure message
+  }
+  memset(message.data, 0, sizeof(message.data)); // Clear the entire array
+}
+
+static void handle_rx_message(const twai_message_t &message)
+{
+    // Assuming the message ID corresponds to the buzzer ID
+    uint16_t buzzer_id = message.identifier;
+    printf("Message received from buzzer %d\n", buzzer_id);
+    for(BuzzerButton &buzzer : buzzers) {
+        if(buzzer.buzzer_id == buzzer_id) {
+            buzzer.pressed = true;
+            buzzer.press_time = millis() - local_time;
+        } else {
+            buzzer.pressed = false;
+        }
+    }
+}
+
+#define TWAI_RX_PIN 19
+#define TWAI_TX_PIN 20
+
+bool twai_init()
+{
+  // Initialize configuration structures using macro initializers
+  twai_general_config_t g_config = TWAI_GENERAL_CONFIG_DEFAULT((gpio_num_t)TWAI_TX_PIN, (gpio_num_t)TWAI_RX_PIN, TWAI_MODE_NORMAL);
+  twai_timing_config_t t_config = TWAI_TIMING_CONFIG_250KBITS();
+  twai_filter_config_t f_config = TWAI_FILTER_CONFIG_ACCEPT_ALL();
+
+  // Install TWAI driver
+  if (twai_driver_install(&g_config, &t_config, &f_config) != ESP_OK)
+  {
+    Serial.println("Failed to install driver"); // Print error message
+    return false;                               // Return false if driver installation fails
+  }
+  Serial.println("Driver installed"); // Print success message
+
+  // Start TWAI driver
+  if (twai_start() != ESP_OK)
+  {
+    Serial.println("Failed to start driver"); // Print error message
+    return false;
+  }
+  Serial.println("Driver started"); // Print success message
+
+  twai_clear_receive_queue();
+  twai_clear_transmit_queue();
+
+  // Reconfigure alerts to detect frame receive, Bus-Off error, and RX queue full states
+  uint32_t alerts_to_enable = TWAI_ALERT_RX_DATA | TWAI_ALERT_ERR_PASS | TWAI_ALERT_BUS_ERROR | TWAI_ALERT_RX_QUEUE_FULL | TWAI_ALERT_RECOVERY_IN_PROGRESS | TWAI_ALERT_BUS_RECOVERED | TWAI_ALERT_ERR_PASS;
+  if (twai_reconfigure_alerts(alerts_to_enable, NULL) == ESP_OK)
+  {
+    Serial.println("CAN Alerts reconfigured"); // Print success message
+  }
+  else
+  {
+    Serial.println("Failed to reconfigure alerts"); // Print error message
+    return false;
+  }
+  return true;
+}
+
+void twai_receive()
+{
+  // Check if alert happened
+  uint32_t alerts_triggered;
+  if (twai_read_alerts(&alerts_triggered, 0) == ESP_OK) {
+    if (alerts_triggered & TWAI_ALERT_BUS_ERROR)
+    {
+        twai_status_info_t twaistatus;                                       // Create status info structure
+        twai_get_status_info(&twaistatus);                                   // Get status information
+        Serial.println("Alert: A (Bit, Stuff, CRC, Form, ACK) error has occurred on the bus."); // Print bus error alert
+        Serial.printf("Bus error count: %d\n", twaistatus.bus_error_count);                     // Print bus error count
+    }
+    else if (alerts_triggered & TWAI_ALERT_ERR_PASS)
+    {
+        Serial.println("Alert: TWAI controller has become error passive."); // Print passive error alert
+    }
+    else if (alerts_triggered & TWAI_ALERT_RX_QUEUE_FULL)
+    {
+        twai_status_info_t twaistatus;                                       // Create status info structure
+        twai_get_status_info(&twaistatus);                                   // Get status information
+        Serial.println("Alert: The RX queue is full causing a received frame to be lost."); // Print RX queue full alert
+        Serial.printf("RX buffered: %d\t", twaistatus.msgs_to_rx);                          // Print buffered RX messages
+        Serial.printf("RX missed: %d\t", twaistatus.rx_missed_count);                       // Print missed RX count
+        Serial.printf("RX overrun %d\n", twaistatus.rx_overrun_count);                      // Print RX overrun count
+        twai_clear_receive_queue();
+        twai_clear_transmit_queue();
+    }
+
+    if (alerts_triggered & TWAI_ALERT_RX_DATA)
+    {
+        // One or more messages received. Handle all.
+        twai_message_t message;
+        while (twai_receive(&message, 0) == ESP_OK)
+        {                             // Receive messages
+        handle_rx_message(message); // Handle each received message
+        }
+    }
+  }
+
+}
+
 void setup()
 {
-    String title = "LVGL porting example";
+    delay(3000); // Wait for 2 seconds to allow serial monitor to connect
 
     Serial.begin(115200);
 
@@ -385,6 +540,9 @@ void setup()
 
     Serial.println("Initializing LVGL");
     lvgl_port_init(board->getLCD(), board->getTouch());
+
+    Serial.println("Initializing TWAI");
+    twai_init();
 
     Serial.println("Creating UI");
 
@@ -464,13 +622,14 @@ void setup()
     
     lvgl_port_unlock();
 
-    buzzers.insert(buzzers.end(), BuzzerButton(0, true));
     buzzers.insert(buzzers.end(), BuzzerButton(1, true));
     buzzers.insert(buzzers.end(), BuzzerButton(2, true));
     buzzers.insert(buzzers.end(), BuzzerButton(3, true));
+    buzzers.insert(buzzers.end(), BuzzerButton(4, true));
 }
 
 void loop()
 {
     game_tick();
+    twai_receive();
 }
