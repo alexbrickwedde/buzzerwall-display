@@ -12,9 +12,9 @@
 using namespace esp_panel::drivers;
 using namespace esp_panel::board;
 
-extern lv_font_t lv_font_roboto_40;
-extern lv_font_t lv_font_roboto_60;
-extern lv_font_t lv_font_roboto_80;
+extern lv_font_t lv_font_robotocondensed_40;
+extern lv_font_t lv_font_robotocondensed_60;
+extern lv_font_t lv_font_robotocondensed_80;
 extern lv_font_t lv_font_caveat_40;
 extern lv_font_t lv_font_caveat_60;
 extern lv_font_t lv_font_caveat_80;
@@ -60,7 +60,8 @@ enum GameState {
     GAME_READYSETGO,
     GAME_PREPARING,
     GAME_STARTING,
-    GAME_WAIT_FOR_BUZZER,
+    GAME_WAIT_FOR_BUZZER1,
+    GAME_WAIT_FOR_BUZZER2,
     GAME_ROUND_COMPLETE,
     GAME_FINISHED,
     GAME_END
@@ -71,6 +72,7 @@ uint8_t current_round = 0;
 uint8_t current_buzzer = 0;
 uint32_t total_time = 0;
 uint32_t local_time = 0;
+uint32_t random_start_time = 0;
 const uint8_t TOTAL_ROUNDS = 5;
 
 
@@ -149,9 +151,6 @@ void game_tick() {
         case GAME_PREPARING:
             current_round = 0;
             total_time = 0;
-            for (BuzzerButton &buzzer : buzzers) {
-                buzzer.clear();
-            }
 
             lvgl_port_lock(-1);
             display_time(total_time);
@@ -168,9 +167,11 @@ void game_tick() {
             break;
 
         case GAME_STARTING:
+            for (BuzzerButton &buzzer : buzzers) {
+                buzzer.clear();
+            }
             current_round++;
             if (current_round <= TOTAL_ROUNDS) {
-                // Find a random buzzer that is online (bit 7) and should be used in the game (bit 6)
                 std::vector<uint8_t> available_buzzers;
                 for (BuzzerButton &buzzer : buzzers) {
                     if (buzzer.used_in_game) {
@@ -186,15 +187,14 @@ void game_tick() {
                     game_state = GAME_FINISHED; // No available buzzers
                     break;
                 }
-                buzzers[current_buzzer].waiting_for_press = true;
-                local_time = millis();
+                random_start_time = millis() + random(1500, 3000);
 
                 char meldung[32];
-                snprintf(meldung, sizeof(meldung), "Runde %d: Buzzer %d", current_round, current_buzzer + 1);
+                snprintf(meldung, sizeof(meldung), "Runde %d", current_round);
                 lvgl_port_lock(-1);
                 lv_label_set_text(label_1, meldung);
                 lvgl_port_unlock();
-                game_state = GAME_WAIT_FOR_BUZZER;
+                game_state = GAME_WAIT_FOR_BUZZER1;
             } else {
                 lvgl_port_lock(-1);
                 lv_label_set_text(label_1, "Spiel beendet!");
@@ -203,7 +203,22 @@ void game_tick() {
             }
             break;
 
-        case GAME_WAIT_FOR_BUZZER:
+        case GAME_WAIT_FOR_BUZZER1:
+            if (millis() < random_start_time) {
+                break;
+            }
+            buzzers[current_buzzer].waiting_for_press = true;
+            local_time = millis();
+
+            char meldung[32];
+            snprintf(meldung, sizeof(meldung), "Buzzer %d !!!", current_buzzer + 1);
+            lvgl_port_lock(-1);
+            lv_label_set_text(label_1, meldung);
+            lvgl_port_unlock();
+            game_state = GAME_WAIT_FOR_BUZZER2;
+            break;
+
+        case GAME_WAIT_FOR_BUZZER2:
             {
                 lvgl_port_lock(-1);
                 display_time(total_time + (millis() - local_time));
@@ -331,7 +346,7 @@ static void event_handler_test(lv_event_t * e)
     lv_event_code_t code = lv_event_get_code(e);
     if(code == LV_EVENT_CLICKED) {
         switch (game_state) {
-            case GAME_WAIT_FOR_BUZZER:
+            case GAME_WAIT_FOR_BUZZER2:
                 buzzers[current_buzzer].pressed = true;
                 buzzers[current_buzzer].press_time = millis() - local_time;
                 break;
@@ -390,30 +405,33 @@ void setup()
 
     startbtn = lv_btn_create(lv_scr_act());
     lv_obj_set_style_bg_color(startbtn, lv_color_hex(0xc5c405), LV_PART_MAIN);
+    lv_obj_set_style_text_color(startbtn, lv_color_black(), LV_PART_MAIN);
     lv_obj_add_event_cb(startbtn, event_handler_start, LV_EVENT_ALL, NULL);
     lv_obj_align(startbtn, LV_ALIGN_BOTTOM_MID, 0, -2);
     startlabel = lv_label_create(startbtn);
     lv_label_set_text(startlabel, "START");
-    lv_obj_set_style_text_font(startlabel, &lv_font_caveat_60, 0);
+    lv_obj_set_style_text_font(startlabel, &lv_font_robotocondensed_60, 0);
     lv_obj_center(startlabel);
 
     cancelbtn = lv_btn_create(lv_scr_act());
     lv_obj_add_event_cb(cancelbtn, event_handler_cancel, LV_EVENT_ALL, NULL);
     lv_obj_set_style_bg_color(cancelbtn, lv_color_hex(0xe4032e), LV_PART_MAIN);
+    lv_obj_set_style_text_color(cancelbtn, lv_color_black(), LV_PART_MAIN);
     lv_obj_align(cancelbtn, LV_ALIGN_BOTTOM_RIGHT, -2, -2);
     cancellabel = lv_label_create(cancelbtn);
     lv_label_set_text(cancellabel, "STOPP");
-    lv_obj_set_style_text_font(cancellabel, &lv_font_caveat_60, 0);
+    lv_obj_set_style_text_font(cancellabel, &lv_font_robotocondensed_60, 0);
     lv_obj_center(cancellabel);
     lv_obj_add_flag(cancelbtn, LV_OBJ_FLAG_HIDDEN);
 
     testbtn = lv_btn_create(lv_scr_act());
     lv_obj_add_event_cb(testbtn, event_handler_test, LV_EVENT_ALL, NULL);
     lv_obj_set_style_bg_color(testbtn, lv_color_hex(0xe4032e), LV_PART_MAIN);
+    lv_obj_set_style_text_color(testbtn, lv_color_black(), LV_PART_MAIN);
     lv_obj_align(testbtn, LV_ALIGN_BOTTOM_LEFT, 2, -2);
     testlabel = lv_label_create(testbtn);
     lv_label_set_text(testlabel, "TEST");
-    lv_obj_set_style_text_font(testlabel, &lv_font_caveat_60, 0);
+    lv_obj_set_style_text_font(testlabel, &lv_font_robotocondensed_60, 0);
     lv_obj_center(testlabel);
     lv_obj_add_flag(testbtn, LV_OBJ_FLAG_HIDDEN);
 
