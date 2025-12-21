@@ -95,11 +95,11 @@ class StartScreen {
     public:
         lv_obj_t *start_screen;
         lv_obj_t *start1btn;
-        lv_obj_t *start1label;
+        //lv_obj_t *start1label;
         lv_obj_t *start2btn;
-        lv_obj_t *start2label;
+        //lv_obj_t *start2label;
         lv_obj_t *start3btn;
-        lv_obj_t *start3label;
+        //lv_obj_t *start3label;
 
         void init(MainScreen& mainscreen) {
             start_screen = lv_obj_create(mainscreen.main_screen);
@@ -118,10 +118,6 @@ class StartScreen {
             lv_obj_set_size(start1btn, 200, 200);
             lv_obj_add_event_cb(start1btn, event_handler_start1, LV_EVENT_ALL, NULL);
             lv_obj_align(start1btn, LV_ALIGN_CENTER, 0, -100);
-            start1label = lv_label_create(start1btn);
-            lv_label_set_text(start1label, "START1");
-            lv_obj_set_style_text_font(start1label, &lv_font_robotocondensed_60, 0);
-            lv_obj_center(start1label);
 
             start2btn = lv_img_create(start_screen);
             lv_img_set_src(start2btn, &difficulty2);
@@ -130,10 +126,6 @@ class StartScreen {
             lv_obj_set_size(start2btn, 200, 200);
             lv_obj_add_event_cb(start2btn, event_handler_start2, LV_EVENT_ALL, NULL);
             lv_obj_align_to(start2btn, start1btn, LV_ALIGN_OUT_LEFT_TOP, -10, 0);
-            start2label = lv_label_create(start2btn);
-            lv_label_set_text(start2label, "START2");
-            lv_obj_set_style_text_font(start2label, &lv_font_robotocondensed_60, 0);
-            lv_obj_center(start2label);
 
             start3btn = lv_img_create(start_screen);
             lv_img_set_src(start3btn, &difficulty3);
@@ -142,10 +134,6 @@ class StartScreen {
             lv_obj_set_size(start3btn, 200, 200);
             lv_obj_add_event_cb(start3btn, event_handler_start3, LV_EVENT_ALL, NULL);
             lv_obj_align_to(start3btn, start1btn, LV_ALIGN_OUT_RIGHT_TOP, 10, 0);
-            start3label = lv_label_create(start3btn);
-            lv_label_set_text(start3label, "START3");
-            lv_obj_set_style_text_font(start3label, &lv_font_robotocondensed_60, 0);
-            lv_obj_center(start3label);
 
         }
 
