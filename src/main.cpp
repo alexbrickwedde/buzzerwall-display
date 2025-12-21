@@ -28,6 +28,9 @@ extern lv_font_t lv_font_robotocondensed_80;
 extern lv_font_t lv_font_caveat_40;
 extern lv_font_t lv_font_caveat_60;
 extern lv_font_t lv_font_caveat_80;
+extern const lv_img_dsc_t difficulty1;
+extern const lv_img_dsc_t difficulty2;
+extern const lv_img_dsc_t difficulty3;
 
 class BuzzerButton {
 public:
@@ -108,7 +111,8 @@ class StartScreen {
             lv_obj_clear_flag(start_screen, LV_OBJ_FLAG_SCROLLABLE);
             lv_obj_clear_flag(start_screen, LV_OBJ_FLAG_HIDDEN);
 
-            start1btn = lv_btn_create(start_screen);
+            start1btn = lv_img_create(start_screen);
+            lv_img_set_src(start1btn, &difficulty1);
             lv_obj_set_style_bg_color(start1btn, lv_color_hex(0xc5c405), LV_PART_MAIN);
             lv_obj_set_style_text_color(start1btn, lv_color_black(), LV_PART_MAIN);
             lv_obj_set_size(start1btn, 250, 100);
@@ -119,7 +123,8 @@ class StartScreen {
             lv_obj_set_style_text_font(start1label, &lv_font_robotocondensed_60, 0);
             lv_obj_center(start1label);
 
-            start2btn = lv_btn_create(start_screen);
+            start2btn = lv_img_create(start_screen);
+            lv_img_set_src(start2btn, &difficulty2);
             lv_obj_set_style_bg_color(start2btn, lv_color_hex(0xc5c405), LV_PART_MAIN);
             lv_obj_set_style_text_color(start2btn, lv_color_black(), LV_PART_MAIN);
             lv_obj_set_size(start2btn, 250, 100);
@@ -130,7 +135,8 @@ class StartScreen {
             lv_obj_set_style_text_font(start2label, &lv_font_robotocondensed_60, 0);
             lv_obj_center(start2label);
 
-            start3btn = lv_btn_create(start_screen);
+            start3btn = lv_img_create(start_screen);
+            lv_img_set_src(start3btn, &difficulty3);
             lv_obj_set_style_bg_color(start3btn, lv_color_hex(0xc5c405), LV_PART_MAIN);
             lv_obj_set_style_text_color(start3btn, lv_color_black(), LV_PART_MAIN);
             lv_obj_set_size(start3btn, 250, 100);
