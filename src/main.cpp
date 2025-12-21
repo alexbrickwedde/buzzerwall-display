@@ -1,6 +1,3 @@
-
-TODO: buzzer press increasing id
-
 #include <Arduino.h>
 #include <esp_display_panel.hpp>
 
@@ -12,6 +9,7 @@ TODO: buzzer press increasing id
 
 #include <vector>
 #include <cstring>
+#include <atomic>
 
 static void twai_send_message(uint32_t id, const uint8_t* data, uint8_t len);
 
@@ -34,12 +32,15 @@ lv_obj_t * seven5;
 
 class BuzzerButton {
 public:
-    uint8_t buzzer_id;
+    uint16_t buzzer_id;
+    uint32_t last_press_id;
+    uint32_t last_press_online;
     bool used_in_game;
     bool pressed;
     bool waiting_for_press;
+    bool bus_offline;
     uint32_t press_time; // Time when the button was pressed
-    BuzzerButton(uint8_t id, bool used) : buzzer_id(id), used_in_game(used), pressed(false), waiting_for_press(false), press_time(0) {
+    BuzzerButton(uint16_t id, bool used) : buzzer_id(id), used_in_game(used), pressed(false), waiting_for_press(false), press_time(0), last_press_id(0), last_press_online(0), bus_offline(true) {
         //
     }
 
@@ -47,6 +48,8 @@ public:
         pressed = false;
         waiting_for_press = false;
         press_time = 0;
+        last_press_id = 0;
+        last_press_online = 0;
     }
 };
 
@@ -60,6 +63,7 @@ lv_obj_t *testlabel;
 
 
 std::vector<BuzzerButton> buzzers;
+std::vector<lv_obj_t*> buzzer_indicators;
 
 enum GameState {
     GAME_IDLE,
@@ -75,8 +79,10 @@ enum GameState {
 
 GameState game_state = GAME_IDLE;
 uint8_t current_round = 0;
-uint8_t current_buzzer = 0;
+uint16_t waitforbuzzer_index = 0xffff;
+uint16_t waitforbuzzer_id = 0;
 uint32_t total_time = 0;
+std::atomic<uint32_t> buzzer_time = 0;
 uint32_t local_time = 0;
 uint32_t random_start_time = 0;
 const uint8_t TOTAL_ROUNDS = 5;
@@ -124,6 +130,42 @@ void game_tick() {
     if(bSendCan) {
         next_can_packet_millis = millis() + 1000;
     }
+
+    lvgl_port_lock(-1);
+    for(uint16_t i = 0; i < buzzers.size(); i++) {
+        BuzzerButton &buzzer = buzzers[i];
+
+        if (!buzzer.bus_offline) {
+            if (millis() - buzzer.last_press_online > 1000) {
+                buzzer.bus_offline = true;
+                printf("!!!! Buzzer %d went offline\n", buzzer.buzzer_id);
+            }
+        }
+
+        if(buzzer_indicators.size() <= i) {
+            lv_obj_t * indicator = lv_obj_create(lv_scr_act());
+            buzzer_indicators.push_back(indicator);
+
+            lv_obj_set_size(buzzer_indicators[i], 15, 15);
+            lv_obj_align(buzzer_indicators[i], LV_ALIGN_TOP_RIGHT, -5, 5 + i * 20);
+            lv_obj_set_style_radius(buzzer_indicators[i], LV_RADIUS_CIRCLE, LV_PART_MAIN);
+        }
+
+        if(buzzers[i].bus_offline) {
+            lv_obj_set_style_bg_color(buzzer_indicators[i], lv_color_hex(0xff8800), LV_PART_MAIN);
+        } else {
+            if(buzzers[i].used_in_game) {
+                if (buzzers[i].pressed) {
+                    lv_obj_set_style_bg_color(buzzer_indicators[i], lv_color_hex(0x000000), LV_PART_MAIN);
+                } else {
+                    lv_obj_set_style_bg_color(buzzer_indicators[i], lv_color_hex(0x00ff00), LV_PART_MAIN);
+                }
+            } else {
+                lv_obj_set_style_bg_color(buzzer_indicators[i], lv_color_hex(0x008800), LV_PART_MAIN);
+            }
+        }
+    }
+    lvgl_port_unlock();
 
     switch (game_state) {
         case GAME_IDLE:
@@ -191,13 +233,15 @@ void game_tick() {
             current_round++;
             if (current_round <= TOTAL_ROUNDS) {
                 std::vector<uint8_t> available_buzzers;
-                for (BuzzerButton &buzzer : buzzers) {
+                for(uint16_t i = 0; i < buzzers.size(); i++) {
+                    BuzzerButton &buzzer = buzzers[i];
                     if (buzzer.used_in_game) {
-                        available_buzzers.push_back(buzzer.buzzer_id);
+                        available_buzzers.push_back(i);
                     }
                 }
                 if (!available_buzzers.empty()) {
-                    current_buzzer = available_buzzers[random(0, available_buzzers.size())];
+                    waitforbuzzer_index = available_buzzers[random(0, available_buzzers.size())];
+                    waitforbuzzer_id = buzzers[waitforbuzzer_index].buzzer_id;
                 } else {
                     lvgl_port_lock(-1);
                     lv_label_set_text(label_1, "Keine Buzzer vorhanden!");
@@ -227,15 +271,16 @@ void game_tick() {
                 if (millis() < random_start_time) {
                     break;
                 }
-                buzzers[current_buzzer].waiting_for_press = true;
+                buzzers[waitforbuzzer_index].waiting_for_press = true;
                 local_time = millis();
+                buzzer_time = 0xffffffff;
 
                 uint8_t data[8] = {0};
                 data[0] = 0x01;
-                twai_send_message(buzzers[current_buzzer].buzzer_id | 0x100, data, 1);
+                twai_send_message(buzzers[waitforbuzzer_index].buzzer_id | 0x100, data, 1);
 
                 char meldung[32];
-                snprintf(meldung, sizeof(meldung), "Buzzer %d !!!", buzzers[current_buzzer].buzzer_id);
+                snprintf(meldung, sizeof(meldung), "Buzzer %d !!!", waitforbuzzer_id);
                 lvgl_port_lock(-1);
                 lv_label_set_text(label_1, meldung);
                 lvgl_port_unlock();
@@ -247,7 +292,12 @@ void game_tick() {
         case GAME_WAIT_FOR_BUZZER2:
             {
                 lvgl_port_lock(-1);
-                display_time(total_time + (millis() - local_time));
+                if (buzzer_time != 0xffffffff) {
+                    display_time(total_time + buzzer_time);
+                } else {
+                    printf("!!! buzzer_time still not set\n");
+                    display_time(total_time + (millis() - local_time));
+                }
                 lvgl_port_unlock();
 
                 lv_color_t color;
@@ -278,6 +328,7 @@ void game_tick() {
                             break;
                         } else {
                             total_time += 1000; // Add 1000ms penalty for incorrect buzzer
+                            printf("!!! penalty for buzzer %d\n", buzzer.buzzer_id);
                         }
                     }
                 }
@@ -285,13 +336,15 @@ void game_tick() {
                 if (bSendCan) {
                     uint8_t data[8] = {0};
                     data[0] = 0x01;
-                    twai_send_message(buzzers[current_buzzer].buzzer_id | 0x100, data, 1);
+                    twai_send_message(buzzers[waitforbuzzer_index].buzzer_id | 0x100, data, 1);
                 }
             }
             break;
 
         case GAME_ROUND_COMPLETE:
             {
+                waitforbuzzer_index = 0xffff;
+                waitforbuzzer_id = 0;
                 if (bSendCan) {
                     uint8_t data[8] = {0};
                     data[0] = 0x00;
@@ -388,8 +441,8 @@ static void event_handler_test(lv_event_t * e)
     if(code == LV_EVENT_CLICKED) {
         switch (game_state) {
             case GAME_WAIT_FOR_BUZZER2:
-                buzzers[current_buzzer].pressed = true;
-                buzzers[current_buzzer].press_time = millis() - local_time;
+                buzzers[waitforbuzzer_index].pressed = true;
+                buzzers[waitforbuzzer_index].press_time = millis() - local_time;
                 break;
         }
     }
@@ -415,13 +468,36 @@ static void handle_rx_message(const twai_message_t &message)
 {
     // Assuming the message ID corresponds to the buzzer ID
     uint16_t buzzer_id = message.identifier;
+    uint32_t press_id = message.data[0];
+    uint32_t press_millis = message.data[4] << 24 | message.data[5] << 16 | message.data[6] << 8 | message.data[7];
     printf("Message received from buzzer %d\n", buzzer_id);
     for(BuzzerButton &buzzer : buzzers) {
         if(buzzer.buzzer_id == buzzer_id) {
-            buzzer.pressed = true;
-            buzzer.press_time = millis() - local_time;
-        } else {
-            buzzer.pressed = false;
+            if (buzzer.last_press_id != press_id) {
+                if (game_state == GAME_WAIT_FOR_BUZZER2) {
+                    if (buzzer.last_press_online != 0) {
+                        buzzer.last_press_id = press_id;
+                        if (!buzzer.pressed) {
+                            buzzer.pressed = true;
+                            buzzer.press_time = press_millis;
+                        }
+                    }
+                } else {
+                    printf("!!! press buzzer_id %d, id %d not in game\n", buzzer_id, press_id);
+                }
+            }
+            
+            if (waitforbuzzer_index != 0xffffffff) {
+                if (buzzers[waitforbuzzer_index].buzzer_id == buzzer_id) {
+                    buzzer_time = press_millis;
+                }
+            }
+
+            buzzer.last_press_online = millis();
+            if (buzzer.bus_offline) {
+                printf("!!!! Buzzer %d went online\n", buzzer.buzzer_id);
+                buzzer.bus_offline = false;
+            }
         }
     }
 }
@@ -624,7 +700,7 @@ void setup()
 
     buzzers.insert(buzzers.end(), BuzzerButton(1, true));
     buzzers.insert(buzzers.end(), BuzzerButton(2, true));
-    buzzers.insert(buzzers.end(), BuzzerButton(3, true));
+    buzzers.insert(buzzers.end(), BuzzerButton(3, false));
     buzzers.insert(buzzers.end(), BuzzerButton(4, true));
 }
 
