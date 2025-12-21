@@ -12,12 +12,6 @@
 #include <atomic>
 
 static void twai_send_message(uint32_t id, const uint8_t* data, uint8_t len);
-static void event_handler_startMedium(lv_event_t * e);
-static void event_handler_startSmall(lv_event_t * e);
-static void event_handler_startLarge(lv_event_t * e);
-static void event_handler_ok(lv_event_t * e);
-static void event_handler_cancel(lv_event_t * e);
-static void event_handler_test(lv_event_t * e);
 
 using namespace esp_panel::drivers;
 using namespace esp_panel::board;
@@ -31,6 +25,37 @@ extern lv_font_t lv_font_caveat_80;
 extern const lv_img_dsc_t difficulty1;
 extern const lv_img_dsc_t difficulty2;
 extern const lv_img_dsc_t difficulty3;
+
+class BuzzerButton;
+
+std::vector<BuzzerButton> buzzers;
+std::vector<lv_obj_t*> buzzer_indicators;
+
+enum GameState {
+    GAME_IDLE,
+    GAME_READYSETGO,
+    GAME_PREPARING,
+    GAME_STARTING,
+    GAME_WAIT_FOR_BUZZER1,
+    GAME_WAIT_FOR_BUZZER2,
+    GAME_ROUND_COMPLETE,
+    GAME_FINISHED,
+    GAME_END
+};
+
+GameState game_state = GAME_IDLE;
+uint8_t game_variant = 0;
+uint8_t current_round = 0;
+uint16_t waitforbuzzer_index = 0xffff;
+uint16_t waitforbuzzer_id = 0;
+uint32_t total_time = 0;
+std::atomic<uint32_t> buzzer_time = 0;
+uint32_t local_time = 0;
+uint32_t random_start_time = 0;
+const uint8_t TOTAL_ROUNDS = 5;
+
+uint32_t next_can_packet_millis = 0;
+
 class BuzzerButton {
 public:
     uint16_t buzzer_id;
@@ -90,6 +115,10 @@ class OverlayScreen {
 };
 OverlayScreen overlayscreen;
 
+void settingsScreenShow();
+void gameScreenShow();
+void startScreenShow();
+
 class StartScreen {
     public:
         lv_obj_t *start_screen;
@@ -99,6 +128,8 @@ class StartScreen {
         lv_obj_t *startSmallLabel;
         lv_obj_t *startLargeBtn;
         lv_obj_t *startLargeLabel;
+        lv_obj_t *settingsBtn;
+        lv_obj_t *settingsLabel;
 
         void init(MainScreen& mainscreen) {
             start_screen = lv_obj_create(mainscreen.main_screen);
@@ -114,7 +145,7 @@ class StartScreen {
             lv_obj_set_style_bg_color(startMediumBtn, lv_color_hex(0xc5c405), LV_PART_MAIN);
             lv_obj_set_style_text_color(startMediumBtn, lv_color_black(), LV_PART_MAIN);
             lv_obj_set_size(startMediumBtn, 250, 250);
-            lv_obj_add_event_cb(startMediumBtn, event_handler_startMedium, LV_EVENT_ALL, NULL);
+            lv_obj_add_event_cb(startMediumBtn, [](lv_event_t *e){StartScreen *self = static_cast<StartScreen*>(lv_event_get_user_data(e));self->handle_startMedium(e);}, LV_EVENT_ALL,  static_cast<void*>(this));
             lv_obj_align(startMediumBtn, LV_ALIGN_CENTER, 0, -100);
             startMediumLabel = lv_img_create(startMediumBtn);
             lv_img_set_src(startMediumLabel, &difficulty2);
@@ -124,7 +155,7 @@ class StartScreen {
             lv_obj_set_style_bg_color(startSmallBtn, lv_color_hex(0xc5c405), LV_PART_MAIN);
             lv_obj_set_style_text_color(startSmallBtn, lv_color_black(), LV_PART_MAIN);
             lv_obj_set_size(startSmallBtn, 250, 250);
-            lv_obj_add_event_cb(startSmallBtn, event_handler_startSmall, LV_EVENT_ALL, NULL);
+            lv_obj_add_event_cb(startSmallBtn, [](lv_event_t *e){StartScreen *self = static_cast<StartScreen*>(lv_event_get_user_data(e));self->handle_startSmall(e);}, LV_EVENT_ALL,  static_cast<void*>(this));
             lv_obj_align_to(startSmallBtn, startMediumBtn, LV_ALIGN_OUT_LEFT_TOP, -10, 0);
             startSmallLabel = lv_img_create(startSmallBtn);
             lv_img_set_src(startSmallLabel, &difficulty1);
@@ -134,12 +165,80 @@ class StartScreen {
             lv_obj_set_style_bg_color(startLargeBtn, lv_color_hex(0xc5c405), LV_PART_MAIN);
             lv_obj_set_style_text_color(startLargeBtn, lv_color_black(), LV_PART_MAIN);
             lv_obj_set_size(startLargeBtn, 250, 250);
-            lv_obj_add_event_cb(startLargeBtn, event_handler_startLarge, LV_EVENT_ALL, NULL);
+            lv_obj_add_event_cb(startLargeBtn, [](lv_event_t *e){StartScreen *self = static_cast<StartScreen*>(lv_event_get_user_data(e));self->handle_startLarge(e);}, LV_EVENT_ALL,  static_cast<void*>(this));
             lv_obj_align_to(startLargeBtn, startMediumBtn, LV_ALIGN_OUT_RIGHT_TOP, 10, 0);
             startLargeLabel = lv_img_create(startLargeBtn);
             lv_img_set_src(startLargeLabel, &difficulty3);
             lv_obj_center(startLargeLabel);
 
+            settingsBtn = lv_btn_create(start_screen);
+            lv_obj_set_style_bg_color(settingsBtn, lv_color_hex(0xc5c405), LV_PART_MAIN);
+            lv_obj_set_style_text_color(settingsBtn, lv_color_black(), LV_PART_MAIN);
+            lv_obj_set_size(settingsBtn, 50, 50);
+            lv_obj_add_event_cb(settingsBtn, [](lv_event_t *e){StartScreen *self = static_cast<StartScreen*>(lv_event_get_user_data(e));self->handle_settings(e);}, LV_EVENT_ALL,  static_cast<void*>(this));
+            lv_obj_align(settingsBtn, LV_ALIGN_BOTTOM_RIGHT, -5, -5);
+            settingsLabel = lv_img_create(startLargeBtn);
+            lv_img_set_src(settingsLabel, &difficulty3);
+            lv_obj_center(settingsLabel);
+        }
+
+        void handle_startMedium(lv_event_t * e)
+        {
+            lv_event_code_t code = lv_event_get_code(e);
+            if(code == LV_EVENT_CLICKED) {
+                switch (game_state) {
+                    case GAME_IDLE:
+                        game_variant = 2;
+                        game_state = GAME_READYSETGO;
+                        gameScreenShow();
+                        break;
+
+                    default:
+                        break;
+                }
+            }
+        }
+
+        void handle_startSmall(lv_event_t * e)
+        {
+            lv_event_code_t code = lv_event_get_code(e);
+            if(code == LV_EVENT_CLICKED) {
+                switch (game_state) {
+                    case GAME_IDLE:
+                        game_variant = 1;
+                        game_state = GAME_READYSETGO;
+                        gameScreenShow();
+                        break;
+
+                    default:
+                        break;
+                }
+            }
+        }
+
+        void handle_startLarge(lv_event_t * e)
+        {
+            lv_event_code_t code = lv_event_get_code(e);
+            if(code == LV_EVENT_CLICKED) {
+                switch (game_state) {
+                    case GAME_IDLE:
+                        game_variant = 3;
+                        game_state = GAME_READYSETGO;
+                        gameScreenShow();
+                        break;
+
+                    default:
+                        break;
+                }
+            }
+        }
+
+        void handle_settings(lv_event_t * e)
+        {
+            lv_event_code_t code = lv_event_get_code(e);
+            if(code == LV_EVENT_CLICKED) {
+                //settingsScreenShow();
+            }
         }
 
         void show() {
@@ -152,6 +251,64 @@ class StartScreen {
 
 };
 StartScreen startscreen;
+
+class SettingsScreen {
+    public:
+        lv_obj_t *settings_screen;
+        lv_obj_t *okbtn;
+        lv_obj_t *oklabel;
+        lv_obj_t *cancelbtn;
+        lv_obj_t *cancellabel;
+
+        void init(MainScreen& mainscreen) {
+            settings_screen = lv_obj_create(mainscreen.main_screen);
+            lv_obj_set_size(settings_screen, LV_PCT(100), LV_PCT(100));
+            lv_obj_align(settings_screen, LV_ALIGN_CENTER, 0, 0);
+            lv_obj_set_style_bg_color(settings_screen, lv_color_hex(0xe4032e), LV_PART_MAIN);
+            lv_obj_set_style_border_width(settings_screen, 0, LV_PART_MAIN);
+            lv_obj_set_style_pad_all(settings_screen, 0, LV_PART_MAIN);
+            lv_obj_clear_flag(settings_screen, LV_OBJ_FLAG_SCROLLABLE);
+            lv_obj_add_flag(settings_screen, LV_OBJ_FLAG_HIDDEN);
+
+            okbtn = lv_btn_create(settings_screen);
+            lv_obj_set_style_bg_color(okbtn, lv_color_hex(0xc5c405), LV_PART_MAIN);
+            lv_obj_set_style_text_color(okbtn, lv_color_black(), LV_PART_MAIN);
+            lv_obj_add_event_cb(okbtn, [](lv_event_t *e){SettingsScreen *self = static_cast<SettingsScreen*>(lv_event_get_user_data(e));self->handle_ok();}, LV_EVENT_ALL,  static_cast<void*>(this));
+            lv_obj_align(okbtn, LV_ALIGN_BOTTOM_MID, 0, -2);
+            oklabel = lv_label_create(okbtn);
+            lv_label_set_text(oklabel, "SAVE");
+            lv_obj_set_style_text_font(oklabel, &lv_font_robotocondensed_40, 0);
+            lv_obj_center(oklabel);
+
+            cancelbtn = lv_btn_create(settings_screen);
+            lv_obj_add_event_cb(okbtn, [](lv_event_t *e){SettingsScreen *self = static_cast<SettingsScreen*>(lv_event_get_user_data(e));self->handle_cancel();}, LV_EVENT_ALL,  static_cast<void*>(this));
+            lv_obj_set_style_bg_color(cancelbtn, lv_color_hex(0xe4032e), LV_PART_MAIN);
+            lv_obj_set_style_text_color(cancelbtn, lv_color_black(), LV_PART_MAIN);
+            lv_obj_align(cancelbtn, LV_ALIGN_BOTTOM_RIGHT, -2, -2);
+            cancellabel = lv_label_create(cancelbtn);
+            lv_label_set_text(cancellabel, "CANCEL");
+            lv_obj_set_style_text_font(cancellabel, &lv_font_robotocondensed_40, 0);
+            lv_obj_center(cancellabel);
+            lv_obj_add_flag(cancelbtn, LV_OBJ_FLAG_HIDDEN);
+        }
+
+        void handle_ok() {
+            startScreenShow();
+        }
+
+        void handle_cancel() {
+        }
+
+        void show() {
+            lv_obj_clear_flag(settings_screen, LV_OBJ_FLAG_HIDDEN);
+        }
+
+        void hide() {
+            lv_obj_add_flag(settings_screen, LV_OBJ_FLAG_HIDDEN);
+        }
+
+};
+SettingsScreen settingsscreen;
 
 class GameScreen {
     public:
@@ -188,7 +345,7 @@ class GameScreen {
             okbtn = lv_btn_create(game_screen);
             lv_obj_set_style_bg_color(okbtn, lv_color_hex(0xc5c405), LV_PART_MAIN);
             lv_obj_set_style_text_color(okbtn, lv_color_black(), LV_PART_MAIN);
-            lv_obj_add_event_cb(okbtn, event_handler_ok, LV_EVENT_ALL, NULL);
+            lv_obj_add_event_cb(okbtn, [](lv_event_t *e){GameScreen *self = static_cast<GameScreen*>(lv_event_get_user_data(e));self->handle_ok(e);}, LV_EVENT_ALL,  static_cast<void*>(this));
             lv_obj_align(okbtn, LV_ALIGN_BOTTOM_MID, 0, -2);
             oklabel = lv_label_create(okbtn);
             lv_label_set_text(oklabel, "OK");
@@ -196,7 +353,7 @@ class GameScreen {
             lv_obj_center(oklabel);
 
             cancelbtn = lv_btn_create(game_screen);
-            lv_obj_add_event_cb(cancelbtn, event_handler_cancel, LV_EVENT_ALL, NULL);
+            lv_obj_add_event_cb(cancelbtn, [](lv_event_t *e){GameScreen *self = static_cast<GameScreen*>(lv_event_get_user_data(e));self->handle_cancel(e);}, LV_EVENT_ALL,  static_cast<void*>(this));
             lv_obj_set_style_bg_color(cancelbtn, lv_color_hex(0xe4032e), LV_PART_MAIN);
             lv_obj_set_style_text_color(cancelbtn, lv_color_black(), LV_PART_MAIN);
             lv_obj_align(cancelbtn, LV_ALIGN_BOTTOM_RIGHT, -2, -2);
@@ -207,7 +364,7 @@ class GameScreen {
             lv_obj_add_flag(cancelbtn, LV_OBJ_FLAG_HIDDEN);
 
             testbtn = lv_btn_create(game_screen);
-            lv_obj_add_event_cb(testbtn, event_handler_test, LV_EVENT_ALL, NULL);
+            lv_obj_add_event_cb(testbtn, [](lv_event_t *e){GameScreen *self = static_cast<GameScreen*>(lv_event_get_user_data(e));self->handle_test(e);}, LV_EVENT_ALL,  static_cast<void*>(this));
             lv_obj_set_style_bg_color(testbtn, lv_color_hex(0xe4032e), LV_PART_MAIN);
             lv_obj_set_style_text_color(testbtn, lv_color_black(), LV_PART_MAIN);
             lv_obj_align(testbtn, LV_ALIGN_BOTTOM_LEFT, 2, -2);
@@ -237,6 +394,50 @@ class GameScreen {
             lv_7seg_set_digit(seven3, ' ', false);
             lv_7seg_set_digit(seven4, ' ', false);
             lv_7seg_set_digit(seven5, ' ', false);
+        }
+
+        void handle_ok(lv_event_t * e)
+        {
+            lv_event_code_t code = lv_event_get_code(e);
+            if(code == LV_EVENT_CLICKED) {
+                switch (game_state) {
+                    case GAME_END:
+                        game_state = GAME_IDLE;
+                        lvgl_port_lock(-1);
+                        lv_label_set_text(overlayscreen.label_1, "");
+                        lvgl_port_unlock();
+                        startScreenShow();
+                        break;
+
+                    default:
+                        break;
+                }
+            }
+        }
+
+        void handle_cancel(lv_event_t * e)
+        {
+            lv_event_code_t code = lv_event_get_code(e);
+            if(code == LV_EVENT_CLICKED) {
+                game_state = GAME_IDLE;
+                lvgl_port_lock(-1);
+                lv_label_set_text(overlayscreen.label_1, "Spiel abgebrochen");
+                lvgl_port_unlock();
+                startScreenShow();
+            }
+        }
+
+        void handle_test(lv_event_t * e)
+        {
+            lv_event_code_t code = lv_event_get_code(e);
+            if(code == LV_EVENT_CLICKED) {
+                switch (game_state) {
+                    case GAME_WAIT_FOR_BUZZER2:
+                        buzzers[waitforbuzzer_index].pressed = true;
+                        buzzers[waitforbuzzer_index].press_time = millis() - local_time;
+                        break;
+                }
+            }
         }
 
         void display_time(uint32_t time_ms) {
@@ -339,37 +540,29 @@ class GameScreen {
 };
 GameScreen gamescreen;
 
+void settingsScreenShow() {
+    lvgl_port_lock(-1);
+    startscreen.hide();
+    gamescreen.hide();
+    settingsscreen.show();
+    lvgl_port_unlock();
+}
 
+void gameScreenShow() {
+    lvgl_port_lock(-1);
+    startscreen.hide();
+    gamescreen.show();
+    settingsscreen.hide();
+    lvgl_port_unlock();
+}
 
-std::vector<BuzzerButton> buzzers;
-std::vector<lv_obj_t*> buzzer_indicators;
-
-enum GameState {
-    GAME_IDLE,
-    GAME_READYSETGO,
-    GAME_PREPARING,
-    GAME_STARTING,
-    GAME_WAIT_FOR_BUZZER1,
-    GAME_WAIT_FOR_BUZZER2,
-    GAME_ROUND_COMPLETE,
-    GAME_FINISHED,
-    GAME_END
-};
-
-GameState game_state = GAME_IDLE;
-uint8_t game_variant = 0;
-uint8_t current_round = 0;
-uint16_t waitforbuzzer_index = 0xffff;
-uint16_t waitforbuzzer_id = 0;
-uint32_t total_time = 0;
-std::atomic<uint32_t> buzzer_time = 0;
-uint32_t local_time = 0;
-uint32_t random_start_time = 0;
-const uint8_t TOTAL_ROUNDS = 5;
-
-
-
-uint32_t next_can_packet_millis = 0;
+void startScreenShow() {
+    lvgl_port_lock(-1);
+    startscreen.show();
+    gamescreen.hide();
+    settingsscreen.hide();
+    lvgl_port_unlock();
+}
 
 void game_tick() {
     bool bSendCan = millis() > next_can_packet_millis;
@@ -589,100 +782,6 @@ void game_tick() {
     }
 }
 
-static void event_handler_startMedium(lv_event_t * e)
-{
-    lv_event_code_t code = lv_event_get_code(e);
-    if(code == LV_EVENT_CLICKED) {
-        switch (game_state) {
-            case GAME_IDLE:
-                game_variant = 2;
-                game_state = GAME_READYSETGO;
-                break;
-
-            default:
-                break;
-        }
-    }
-}
-
-static void event_handler_startSmall(lv_event_t * e)
-{
-    lv_event_code_t code = lv_event_get_code(e);
-    if(code == LV_EVENT_CLICKED) {
-        switch (game_state) {
-            case GAME_IDLE:
-                game_variant = 1;
-                game_state = GAME_READYSETGO;
-                break;
-
-            default:
-                break;
-        }
-    }
-}
-
-static void event_handler_startLarge(lv_event_t * e)
-{
-    lv_event_code_t code = lv_event_get_code(e);
-    if(code == LV_EVENT_CLICKED) {
-        switch (game_state) {
-            case GAME_IDLE:
-                game_variant = 3;
-                game_state = GAME_READYSETGO;
-                break;
-
-            default:
-                break;
-        }
-    }
-}
-
-static void event_handler_ok(lv_event_t * e)
-{
-    lv_event_code_t code = lv_event_get_code(e);
-    if(code == LV_EVENT_CLICKED) {
-        switch (game_state) {
-            case GAME_END:
-                lvgl_port_lock(-1);
-                gamescreen.hide();
-                startscreen.show();
-                lv_label_set_text(overlayscreen.label_1, "");
-                lvgl_port_unlock();
-                game_state = GAME_IDLE;
-                break;
-
-            default:
-                break;
-        }
-    }
-}
-
-static void event_handler_cancel(lv_event_t * e)
-{
-    lv_event_code_t code = lv_event_get_code(e);
-    if(code == LV_EVENT_CLICKED) {
-        lvgl_port_lock(-1);
-        gamescreen.hide();
-        startscreen.show();
-        lv_label_set_text(overlayscreen.label_1, "Spiel abgebrochen");
-        lvgl_port_unlock();
-        game_state = GAME_IDLE;
-    }
-}
-
-static void event_handler_test(lv_event_t * e)
-{
-    lv_event_code_t code = lv_event_get_code(e);
-    if(code == LV_EVENT_CLICKED) {
-        switch (game_state) {
-            case GAME_WAIT_FOR_BUZZER2:
-                buzzers[waitforbuzzer_index].pressed = true;
-                buzzers[waitforbuzzer_index].press_time = millis() - local_time;
-                break;
-        }
-    }
-}
-
 static void twai_send_message(uint32_t id, const uint8_t* data, uint8_t len) {
   twai_message_t message;
   message.extd = (id & 0x80000000) != 0;
@@ -862,6 +961,7 @@ void setup()
     startscreen.init(mainscreen);
     gamescreen.init(mainscreen);
     overlayscreen.init(mainscreen);
+    settingsscreen.init(mainscreen);
     lvgl_port_unlock();
 
     buzzers.insert(buzzers.end(), BuzzerButton(1, true));
