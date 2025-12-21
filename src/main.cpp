@@ -12,6 +12,12 @@
 #include <atomic>
 
 static void twai_send_message(uint32_t id, const uint8_t* data, uint8_t len);
+static void event_handler_start1(lv_event_t * e);
+static void event_handler_start2(lv_event_t * e);
+static void event_handler_start3(lv_event_t * e);
+static void event_handler_ok(lv_event_t * e);
+static void event_handler_cancel(lv_event_t * e);
+static void event_handler_test(lv_event_t * e);
 
 using namespace esp_panel::drivers;
 using namespace esp_panel::board;
@@ -22,13 +28,6 @@ extern lv_font_t lv_font_robotocondensed_80;
 extern lv_font_t lv_font_caveat_40;
 extern lv_font_t lv_font_caveat_60;
 extern lv_font_t lv_font_caveat_80;
-
-uint32_t x = 0;
-lv_obj_t * seven1;
-lv_obj_t * seven2;
-lv_obj_t * seven3;
-lv_obj_t * seven4;
-lv_obj_t * seven5;
 
 class BuzzerButton {
 public:
@@ -53,13 +52,294 @@ public:
     }
 };
 
-lv_obj_t *label_1;
-lv_obj_t *startbtn;
-lv_obj_t *startlabel;
-lv_obj_t *cancelbtn;
-lv_obj_t *cancellabel;
-lv_obj_t *testbtn;
-lv_obj_t *testlabel;
+class MainScreen {
+    public:
+        lv_obj_t *main_screen;
+
+        void init(lv_obj_t * parent) {
+            main_screen = lv_scr_act();
+            lv_obj_set_style_bg_color(main_screen, lv_color_hex(0x000000), LV_PART_MAIN);
+            lv_obj_clear_flag(main_screen, LV_OBJ_FLAG_SCROLLABLE);
+        }
+};
+MainScreen mainscreen;
+
+class OverlayScreen {
+    public:
+        lv_obj_t *overlay_screen;
+        lv_obj_t *label_1;
+
+        void init(MainScreen& mainscreen) {
+            overlay_screen = lv_obj_create(mainscreen.main_screen);
+            lv_obj_set_size(overlay_screen, LV_PCT(100), LV_PCT(100));
+            lv_obj_align(overlay_screen, LV_ALIGN_CENTER, 0, 0);
+            lv_obj_set_style_bg_opa(overlay_screen, 0, LV_PART_MAIN);
+            lv_obj_set_style_border_width(overlay_screen, 0, LV_PART_MAIN);
+            lv_obj_set_style_pad_all(overlay_screen, 0, LV_PART_MAIN);
+            lv_obj_clear_flag(overlay_screen, LV_OBJ_FLAG_SCROLLABLE);
+            lv_obj_clear_flag(overlay_screen, LV_OBJ_FLAG_CLICKABLE);
+            lv_obj_add_flag(overlay_screen, LV_OBJ_FLAG_EVENT_BUBBLE);
+
+            label_1 = lv_label_create(overlay_screen);
+            lv_label_set_text(label_1, "");
+            lv_obj_set_style_text_font(label_1, &lv_font_caveat_80, 0);
+            lv_obj_align(label_1, LV_ALIGN_BOTTOM_MID, 0, -90);
+        }
+};
+OverlayScreen overlayscreen;
+
+class StartScreen {
+    public:
+        lv_obj_t *start_screen;
+        lv_obj_t *start1btn;
+        lv_obj_t *start1label;
+        lv_obj_t *start2btn;
+        lv_obj_t *start2label;
+        lv_obj_t *start3btn;
+        lv_obj_t *start3label;
+
+        void init(MainScreen& mainscreen) {
+            start_screen = lv_obj_create(mainscreen.main_screen);
+            lv_obj_set_size(start_screen, LV_PCT(100), LV_PCT(100));
+            lv_obj_align(start_screen, LV_ALIGN_CENTER, 0, 0);
+            lv_obj_set_style_bg_color(start_screen, lv_color_hex(0xe4032e), LV_PART_MAIN);
+            lv_obj_set_style_border_width(start_screen, 0, LV_PART_MAIN);
+            lv_obj_set_style_pad_all(start_screen, 0, LV_PART_MAIN);
+            lv_obj_clear_flag(start_screen, LV_OBJ_FLAG_SCROLLABLE);
+            lv_obj_clear_flag(start_screen, LV_OBJ_FLAG_HIDDEN);
+
+            start1btn = lv_btn_create(start_screen);
+            lv_obj_set_style_bg_color(start1btn, lv_color_hex(0xc5c405), LV_PART_MAIN);
+            lv_obj_set_style_text_color(start1btn, lv_color_black(), LV_PART_MAIN);
+            lv_obj_set_size(start1btn, 250, 100);
+            lv_obj_add_event_cb(start1btn, event_handler_start1, LV_EVENT_ALL, NULL);
+            lv_obj_align(start1btn, LV_ALIGN_CENTER, 0, -100);
+            start1label = lv_label_create(start1btn);
+            lv_label_set_text(start1label, "START1");
+            lv_obj_set_style_text_font(start1label, &lv_font_robotocondensed_60, 0);
+            lv_obj_center(start1label);
+
+            start2btn = lv_btn_create(start_screen);
+            lv_obj_set_style_bg_color(start2btn, lv_color_hex(0xc5c405), LV_PART_MAIN);
+            lv_obj_set_style_text_color(start2btn, lv_color_black(), LV_PART_MAIN);
+            lv_obj_set_size(start2btn, 250, 100);
+            lv_obj_add_event_cb(start2btn, event_handler_start2, LV_EVENT_ALL, NULL);
+            lv_obj_align_to(start2btn, start1btn, LV_ALIGN_OUT_LEFT_TOP, -10, 0);
+            start2label = lv_label_create(start2btn);
+            lv_label_set_text(start2label, "START2");
+            lv_obj_set_style_text_font(start2label, &lv_font_robotocondensed_60, 0);
+            lv_obj_center(start2label);
+
+            start3btn = lv_btn_create(start_screen);
+            lv_obj_set_style_bg_color(start3btn, lv_color_hex(0xc5c405), LV_PART_MAIN);
+            lv_obj_set_style_text_color(start3btn, lv_color_black(), LV_PART_MAIN);
+            lv_obj_set_size(start3btn, 250, 100);
+            lv_obj_add_event_cb(start3btn, event_handler_start3, LV_EVENT_ALL, NULL);
+            lv_obj_align_to(start3btn, start1btn, LV_ALIGN_OUT_RIGHT_TOP, 10, 0);
+            start3label = lv_label_create(start3btn);
+            lv_label_set_text(start3label, "START3");
+            lv_obj_set_style_text_font(start3label, &lv_font_robotocondensed_60, 0);
+            lv_obj_center(start3label);
+
+        }
+
+        void show() {
+            lv_obj_clear_flag(start_screen, LV_OBJ_FLAG_HIDDEN);
+        }
+
+        void hide() {
+            lv_obj_add_flag(start_screen, LV_OBJ_FLAG_HIDDEN);
+        }
+
+};
+StartScreen startscreen;
+
+class GameScreen {
+    public:
+        lv_obj_t * seven1;
+        lv_obj_t * seven2;
+        lv_obj_t * seven3;
+        lv_obj_t * seven4;
+        lv_obj_t * seven5;
+        lv_obj_t *game_screen;
+        lv_obj_t *okbtn;
+        lv_obj_t *oklabel;
+        lv_obj_t *cancelbtn;
+        lv_obj_t *cancellabel;
+        lv_obj_t *testbtn;
+        lv_obj_t *testlabel;
+
+        void init(MainScreen& mainscreen) {
+            game_screen = lv_obj_create(mainscreen.main_screen);
+            lv_obj_set_size(game_screen, LV_PCT(100), LV_PCT(100));
+            lv_obj_align(game_screen, LV_ALIGN_CENTER, 0, 0);
+            lv_obj_set_style_bg_color(game_screen, lv_color_hex(0xe4032e), LV_PART_MAIN);
+            lv_obj_set_style_border_width(game_screen, 0, LV_PART_MAIN);
+            lv_obj_set_style_pad_all(game_screen, 0, LV_PART_MAIN);
+            lv_obj_clear_flag(game_screen, LV_OBJ_FLAG_SCROLLABLE);
+            lv_obj_add_flag(game_screen, LV_OBJ_FLAG_HIDDEN);
+
+            /*
+            lv_obj_t *label = lv_label_create(lv_scr_act());
+            lv_label_set_text(label, "12.345");
+            lv_obj_set_style_text_font(label, &lv_font_dosis_340, 0);
+            lv_obj_align(label, LV_ALIGN_TOP_MID, 0, 0);
+            */
+
+            okbtn = lv_btn_create(game_screen);
+            lv_obj_set_style_bg_color(okbtn, lv_color_hex(0xc5c405), LV_PART_MAIN);
+            lv_obj_set_style_text_color(okbtn, lv_color_black(), LV_PART_MAIN);
+            lv_obj_add_event_cb(okbtn, event_handler_ok, LV_EVENT_ALL, NULL);
+            lv_obj_align(okbtn, LV_ALIGN_BOTTOM_MID, 0, -2);
+            oklabel = lv_label_create(okbtn);
+            lv_label_set_text(oklabel, "OK");
+            lv_obj_set_style_text_font(oklabel, &lv_font_robotocondensed_60, 0);
+            lv_obj_center(oklabel);
+
+            cancelbtn = lv_btn_create(game_screen);
+            lv_obj_add_event_cb(cancelbtn, event_handler_cancel, LV_EVENT_ALL, NULL);
+            lv_obj_set_style_bg_color(cancelbtn, lv_color_hex(0xe4032e), LV_PART_MAIN);
+            lv_obj_set_style_text_color(cancelbtn, lv_color_black(), LV_PART_MAIN);
+            lv_obj_align(cancelbtn, LV_ALIGN_BOTTOM_RIGHT, -2, -2);
+            cancellabel = lv_label_create(cancelbtn);
+            lv_label_set_text(cancellabel, "STOPP");
+            lv_obj_set_style_text_font(cancellabel, &lv_font_robotocondensed_60, 0);
+            lv_obj_center(cancellabel);
+            lv_obj_add_flag(cancelbtn, LV_OBJ_FLAG_HIDDEN);
+
+            testbtn = lv_btn_create(game_screen);
+            lv_obj_add_event_cb(testbtn, event_handler_test, LV_EVENT_ALL, NULL);
+            lv_obj_set_style_bg_color(testbtn, lv_color_hex(0xe4032e), LV_PART_MAIN);
+            lv_obj_set_style_text_color(testbtn, lv_color_black(), LV_PART_MAIN);
+            lv_obj_align(testbtn, LV_ALIGN_BOTTOM_LEFT, 2, -2);
+            testlabel = lv_label_create(testbtn);
+            lv_label_set_text(testlabel, "TEST");
+            lv_obj_set_style_text_font(testlabel, &lv_font_robotocondensed_60, 0);
+            lv_obj_center(testlabel);
+            lv_obj_add_flag(testbtn, LV_OBJ_FLAG_HIDDEN);
+
+            seven1 = lv_7seg_create(game_screen, 170, 320);
+            lv_obj_align(seven1, LV_ALIGN_TOP_LEFT, 5, 0);
+
+            seven2 = lv_7seg_create(game_screen, 170, 320);
+            lv_obj_align(seven2, LV_ALIGN_TOP_LEFT, 5 + 150, 0);
+
+            seven3 = lv_7seg_create(game_screen, 170, 320);
+            lv_obj_align(seven3, LV_ALIGN_TOP_LEFT, 5 + 150 * 2, 0);
+
+            seven4 = lv_7seg_create(game_screen, 170, 320);
+            lv_obj_align(seven4, LV_ALIGN_TOP_LEFT, 5 + 150 * 3, 0);
+
+            seven5 = lv_7seg_create(game_screen, 170, 320  );
+            lv_obj_align(seven5, LV_ALIGN_TOP_LEFT, 5 + 150 * 4, 0);
+
+            lv_7seg_set_digit(seven1, ' ', false);
+            lv_7seg_set_digit(seven2, ' ', false);
+            lv_7seg_set_digit(seven3, ' ', false);
+            lv_7seg_set_digit(seven4, ' ', false);
+            lv_7seg_set_digit(seven5, ' ', false);
+        }
+
+        void display_time(uint32_t time_ms) {
+            uint8_t upper = (time_ms / 10000);
+            if (upper == 0) {
+                lv_7seg_set_digit(seven1, ' ', false);
+                lv_7seg_set_digit(seven2, (time_ms / 1000) % 10, true);
+                lv_7seg_set_digit(seven3, (time_ms / 100) % 10, false);
+                lv_7seg_set_digit(seven4, (time_ms / 10) % 10, false);
+                lv_7seg_set_digit(seven5, time_ms % 10, false);
+            } else if (upper < 10) {
+                lv_7seg_set_digit(seven1, upper, false);
+                lv_7seg_set_digit(seven2, (time_ms / 1000) % 10, true);
+                lv_7seg_set_digit(seven3, (time_ms / 100) % 10, false);
+                lv_7seg_set_digit(seven4, (time_ms / 10) % 10, false);
+                lv_7seg_set_digit(seven5, time_ms % 10, false);
+            } else if (upper < 100) {
+                lv_7seg_set_digit(seven1, (time_ms / 100000) % 10, false);
+                lv_7seg_set_digit(seven2, (time_ms / 10000) % 10, false);
+                lv_7seg_set_digit(seven3, (time_ms / 1000) % 10, true);
+                lv_7seg_set_digit(seven4, (time_ms / 100) % 10, false);
+                lv_7seg_set_digit(seven5, (time_ms / 10) % 10, false);
+            } else if (upper < 1000) {
+                lv_7seg_set_digit(seven1, (time_ms / 1000000) % 10, false);
+                lv_7seg_set_digit(seven2, (time_ms / 100000) % 10, false);
+                lv_7seg_set_digit(seven3, (time_ms / 10000) % 10, false);
+                lv_7seg_set_digit(seven4, (time_ms / 1000) % 10, true);
+                lv_7seg_set_digit(seven5, (time_ms / 100) % 10, false);
+            } else {
+                lv_7seg_set_digit(seven1, ' ', true);
+                lv_7seg_set_digit(seven2, ' ', true);
+                lv_7seg_set_digit(seven3, ' ', true);
+                lv_7seg_set_digit(seven4, ' ', true);
+                lv_7seg_set_digit(seven5, ' ', true);
+            }
+        }
+
+        void show() {
+            lv_7seg_set_digit(seven1, ' ', true);
+            lv_7seg_set_digit(seven2, ' ', true);
+            lv_7seg_set_digit(seven3, ' ', true);
+            lv_7seg_set_digit(seven4, ' ', true);
+            lv_7seg_set_digit(seven5, ' ', true);
+            lv_obj_set_style_bg_color(game_screen, lv_color_hex(0xe4032e), LV_PART_MAIN);
+            lv_obj_clear_flag(game_screen, LV_OBJ_FLAG_HIDDEN);
+        }
+
+        void hide() {
+            lv_obj_add_flag(game_screen, LV_OBJ_FLAG_HIDDEN);
+        }
+
+        void readysetgo() {
+            lvgl_port_lock(-1);
+            lv_obj_add_flag(okbtn, LV_OBJ_FLAG_HIDDEN);
+            lv_obj_clear_flag(cancelbtn, LV_OBJ_FLAG_HIDDEN);
+            lv_obj_clear_flag(testbtn, LV_OBJ_FLAG_HIDDEN);
+            lv_7seg_set_digit(seven1, ' ', false);
+            lv_7seg_set_digit(seven2, ' ', false);
+            lv_7seg_set_digit(seven3, '3', false);
+            lv_7seg_set_digit(seven4, ' ', false);
+            lv_7seg_set_digit(seven5, ' ', false);
+            lv_label_set_text(overlayscreen.label_1, "Bereit?");
+            lvgl_port_unlock();
+            delay(1000);
+            lvgl_port_lock(-1);
+            lv_7seg_set_digit(seven3, '2', false);
+            lv_label_set_text(overlayscreen.label_1, "Auf die Plätze...");
+            lvgl_port_unlock();
+            delay(1000);
+            lvgl_port_lock(-1);
+            lv_7seg_set_digit(seven3, '1', false);
+            lv_label_set_text(overlayscreen.label_1, "Fertig...");
+            lvgl_port_unlock();
+            delay(1000);
+            lvgl_port_lock(-1);
+            lv_7seg_set_digit(seven5, ' ', false);
+            lv_label_set_text(overlayscreen.label_1, "Los!");
+            lvgl_port_unlock();
+        }
+
+        void gameended() {
+            lv_obj_clear_flag(okbtn, LV_OBJ_FLAG_HIDDEN);
+            lv_obj_add_flag(cancelbtn, LV_OBJ_FLAG_HIDDEN);
+            lv_obj_add_flag(testbtn, LV_OBJ_FLAG_HIDDEN);
+            lv_7seg_set_color(seven1, lv_color_hex(0xc5c405));
+            lv_7seg_set_color(seven2, lv_color_hex(0xc5c405));
+            lv_7seg_set_color(seven3, lv_color_hex(0xc5c405));
+            lv_7seg_set_color(seven4, lv_color_hex(0xc5c405));
+            lv_7seg_set_color(seven5, lv_color_hex(0xc5c405));
+            lv_obj_set_style_bg_color(game_screen, lv_color_hex(0xe4032e), LV_PART_MAIN);
+        }
+
+        void sevensegcolor(lv_color_t color) {
+            lv_7seg_set_color(seven1, color);
+            lv_7seg_set_color(seven2, color);
+            lv_7seg_set_color(seven3, color);
+            lv_7seg_set_color(seven4, color);
+            lv_7seg_set_color(seven5, color);
+        }
+};
+GameScreen gamescreen;
+
 
 
 std::vector<BuzzerButton> buzzers;
@@ -88,40 +368,6 @@ uint32_t random_start_time = 0;
 const uint8_t TOTAL_ROUNDS = 5;
 
 
-void display_time(uint32_t time_ms) {
-    uint8_t upper = (time_ms / 10000);
-    if (upper == 0) {
-        lv_7seg_set_digit(seven1, ' ', false);
-        lv_7seg_set_digit(seven2, (time_ms / 1000) % 10, true);
-        lv_7seg_set_digit(seven3, (time_ms / 100) % 10, false);
-        lv_7seg_set_digit(seven4, (time_ms / 10) % 10, false);
-        lv_7seg_set_digit(seven5, time_ms % 10, false);
-    } else if (upper < 10) {
-        lv_7seg_set_digit(seven1, upper, false);
-        lv_7seg_set_digit(seven2, (time_ms / 1000) % 10, true);
-        lv_7seg_set_digit(seven3, (time_ms / 100) % 10, false);
-        lv_7seg_set_digit(seven4, (time_ms / 10) % 10, false);
-        lv_7seg_set_digit(seven5, time_ms % 10, false);
-    } else if (upper < 100) {
-        lv_7seg_set_digit(seven1, (time_ms / 100000) % 10, false);
-        lv_7seg_set_digit(seven2, (time_ms / 10000) % 10, false);
-        lv_7seg_set_digit(seven3, (time_ms / 1000) % 10, true);
-        lv_7seg_set_digit(seven4, (time_ms / 100) % 10, false);
-        lv_7seg_set_digit(seven5, (time_ms / 10) % 10, false);
-    } else if (upper < 1000) {
-        lv_7seg_set_digit(seven1, (time_ms / 1000000) % 10, false);
-        lv_7seg_set_digit(seven2, (time_ms / 100000) % 10, false);
-        lv_7seg_set_digit(seven3, (time_ms / 10000) % 10, false);
-        lv_7seg_set_digit(seven4, (time_ms / 1000) % 10, true);
-        lv_7seg_set_digit(seven5, (time_ms / 100) % 10, false);
-    } else {
-        lv_7seg_set_digit(seven1, ' ', true);
-        lv_7seg_set_digit(seven2, ' ', true);
-        lv_7seg_set_digit(seven3, ' ', true);
-        lv_7seg_set_digit(seven4, ' ', true);
-        lv_7seg_set_digit(seven5, ' ', true);
-    }
-}
 
 uint32_t next_can_packet_millis = 0;
 
@@ -143,7 +389,7 @@ void game_tick() {
         }
 
         if(buzzer_indicators.size() <= i) {
-            lv_obj_t * indicator = lv_obj_create(lv_scr_act());
+            lv_obj_t * indicator = lv_obj_create(overlayscreen.overlay_screen);
             buzzer_indicators.push_back(indicator);
 
             lv_obj_set_size(buzzer_indicators[i], 15, 15);
@@ -178,33 +424,10 @@ void game_tick() {
 
         case GAME_READYSETGO:
             lvgl_port_lock(-1);
-            lv_obj_clear_flag(seven1, LV_OBJ_FLAG_HIDDEN);
-            lv_obj_clear_flag(seven2, LV_OBJ_FLAG_HIDDEN);
-            lv_obj_clear_flag(seven3, LV_OBJ_FLAG_HIDDEN);
-            lv_obj_clear_flag(seven4, LV_OBJ_FLAG_HIDDEN);
-            lv_obj_clear_flag(seven5, LV_OBJ_FLAG_HIDDEN);
-            lv_7seg_set_digit(seven1, ' ', false);
-            lv_7seg_set_digit(seven2, ' ', false);
-            lv_7seg_set_digit(seven3, '3', false);
-            lv_7seg_set_digit(seven4, ' ', false);
-            lv_7seg_set_digit(seven5, ' ', false);
-            lv_label_set_text(label_1, "Bereit?");
+            startscreen.hide();
+            gamescreen.show();
             lvgl_port_unlock();
-            delay(1000);
-            lvgl_port_lock(-1);
-            lv_7seg_set_digit(seven3, '2', false);
-            lv_label_set_text(label_1, "Auf die Plätze...");
-            lvgl_port_unlock();
-            delay(1000);
-            lvgl_port_lock(-1);
-            lv_7seg_set_digit(seven3, '1', false);
-            lv_label_set_text(label_1, "Fertig...");
-            lvgl_port_unlock();
-            delay(1000);
-            lvgl_port_lock(-1);
-            lv_7seg_set_digit(seven5, ' ', false);
-            lv_label_set_text(label_1, "Los!");
-            lvgl_port_unlock();
+            gamescreen.readysetgo();
             game_state = GAME_PREPARING;
             break;
 
@@ -213,14 +436,8 @@ void game_tick() {
             total_time = 0;
 
             lvgl_port_lock(-1);
-            display_time(total_time);
-            lv_obj_clear_flag(cancelbtn, LV_OBJ_FLAG_HIDDEN);
-            lv_obj_clear_flag(testbtn, LV_OBJ_FLAG_HIDDEN);
-            lv_7seg_set_color(seven1, lv_color_hex(0xe4032e));
-            lv_7seg_set_color(seven2, lv_color_hex(0xe4032e));
-            lv_7seg_set_color(seven3, lv_color_hex(0xe4032e));
-            lv_7seg_set_color(seven4, lv_color_hex(0xe4032e));
-            lv_7seg_set_color(seven5, lv_color_hex(0xe4032e));
+            gamescreen.display_time(total_time);
+            gamescreen.sevensegcolor(lv_color_hex(0xe4032e));
             lvgl_port_unlock();
 
             game_state = GAME_STARTING;
@@ -244,7 +461,7 @@ void game_tick() {
                     waitforbuzzer_id = buzzers[waitforbuzzer_index].buzzer_id;
                 } else {
                     lvgl_port_lock(-1);
-                    lv_label_set_text(label_1, "Keine Buzzer vorhanden!");
+                    lv_label_set_text(overlayscreen.label_1, "Keine Buzzer vorhanden!");
                     lvgl_port_unlock();
                     game_state = GAME_FINISHED; // No available buzzers
                     break;
@@ -254,13 +471,13 @@ void game_tick() {
                 char meldung[32];
                 snprintf(meldung, sizeof(meldung), "Runde %d", current_round);
                 lvgl_port_lock(-1);
-                lv_obj_set_style_bg_color(lv_scr_act(), lv_color_hex(0xc5c405), LV_PART_MAIN);
-                lv_label_set_text(label_1, meldung);
+                lv_obj_set_style_bg_color(gamescreen.game_screen, lv_color_hex(0xc5c405), LV_PART_MAIN);
+                lv_label_set_text(overlayscreen.label_1, meldung);
                 lvgl_port_unlock();
                 game_state = GAME_WAIT_FOR_BUZZER1;
             } else {
                 lvgl_port_lock(-1);
-                lv_label_set_text(label_1, "Spiel beendet!");
+                lv_label_set_text(overlayscreen.label_1, "Spiel beendet!");
                 lvgl_port_unlock();
                 game_state = GAME_FINISHED;
             }
@@ -282,7 +499,7 @@ void game_tick() {
                 char meldung[32];
                 snprintf(meldung, sizeof(meldung), "Buzzer %d !!!", waitforbuzzer_id);
                 lvgl_port_lock(-1);
-                lv_label_set_text(label_1, meldung);
+                lv_label_set_text(overlayscreen.label_1, meldung);
                 lvgl_port_unlock();
 
                 game_state = GAME_WAIT_FOR_BUZZER2;
@@ -293,10 +510,10 @@ void game_tick() {
             {
                 lvgl_port_lock(-1);
                 if (buzzer_time != 0xffffffff) {
-                    display_time(total_time + buzzer_time);
+                    gamescreen.display_time(total_time + buzzer_time);
                 } else {
                     printf("!!! buzzer_time still not set\n");
-                    display_time(total_time + (millis() - local_time));
+                    gamescreen.display_time(total_time + (millis() - local_time));
                 }
                 lvgl_port_unlock();
 
@@ -317,7 +534,7 @@ void game_tick() {
                     color = lv_color_make(r, g, b);
                 }
 
-                lv_obj_set_style_bg_color(lv_scr_act(), color, LV_PART_MAIN);
+                lv_obj_set_style_bg_color(gamescreen.game_screen, color, LV_PART_MAIN);
 
 
                 for(BuzzerButton &buzzer : buzzers) {
@@ -330,6 +547,7 @@ void game_tick() {
                             total_time += 1000; // Add 1000ms penalty for incorrect buzzer
                             printf("!!! penalty for buzzer %d\n", buzzer.buzzer_id);
                         }
+                        buzzer.pressed = false;
                     }
                 }
 
@@ -359,17 +577,8 @@ void game_tick() {
 
         case GAME_FINISHED:
             lvgl_port_lock(-1);
-            display_time(total_time);
-            lv_label_set_text(startlabel, "OK");
-            lv_obj_clear_flag(startbtn, LV_OBJ_FLAG_HIDDEN);
-            lv_obj_add_flag(cancelbtn, LV_OBJ_FLAG_HIDDEN);
-            lv_obj_add_flag(testbtn, LV_OBJ_FLAG_HIDDEN);
-            lv_7seg_set_color(seven1, lv_color_hex(0xc5c405));
-            lv_7seg_set_color(seven2, lv_color_hex(0xc5c405));
-            lv_7seg_set_color(seven3, lv_color_hex(0xc5c405));
-            lv_7seg_set_color(seven4, lv_color_hex(0xc5c405));
-            lv_7seg_set_color(seven5, lv_color_hex(0xc5c405));
-            lv_obj_set_style_bg_color(lv_scr_act(), lv_color_hex(0xe4032e), LV_PART_MAIN);
+            gamescreen.display_time(total_time);
+            gamescreen.gameended();
             lvgl_port_unlock();
             game_state = GAME_END;
             break;
@@ -380,29 +589,61 @@ void game_tick() {
     }
 }
 
-static void event_handler_start(lv_event_t * e)
+static void event_handler_start1(lv_event_t * e)
 {
     lv_event_code_t code = lv_event_get_code(e);
     if(code == LV_EVENT_CLICKED) {
         switch (game_state) {
             case GAME_IDLE:
                 game_state = GAME_READYSETGO;
-                lvgl_port_lock(-1);
-                display_time(0);
-                lv_obj_add_flag(startbtn, LV_OBJ_FLAG_HIDDEN);
-                lvgl_port_unlock();
                 break;
 
+            default:
+                break;
+        }
+    }
+}
+
+static void event_handler_start2(lv_event_t * e)
+{
+    lv_event_code_t code = lv_event_get_code(e);
+    if(code == LV_EVENT_CLICKED) {
+        switch (game_state) {
+            case GAME_IDLE:
+                game_state = GAME_READYSETGO;
+                break;
+
+            default:
+                break;
+        }
+    }
+}
+
+static void event_handler_start3(lv_event_t * e)
+{
+    lv_event_code_t code = lv_event_get_code(e);
+    if(code == LV_EVENT_CLICKED) {
+        switch (game_state) {
+            case GAME_IDLE:
+                game_state = GAME_READYSETGO;
+                break;
+
+            default:
+                break;
+        }
+    }
+}
+
+static void event_handler_ok(lv_event_t * e)
+{
+    lv_event_code_t code = lv_event_get_code(e);
+    if(code == LV_EVENT_CLICKED) {
+        switch (game_state) {
             case GAME_END:
                 lvgl_port_lock(-1);
-                display_time(0);
-                lv_label_set_text(startlabel, "START");
-                lv_obj_add_flag(seven1, LV_OBJ_FLAG_HIDDEN);
-                lv_obj_add_flag(seven2, LV_OBJ_FLAG_HIDDEN);
-                lv_obj_add_flag(seven3, LV_OBJ_FLAG_HIDDEN);
-                lv_obj_add_flag(seven4, LV_OBJ_FLAG_HIDDEN);
-                lv_obj_add_flag(seven5, LV_OBJ_FLAG_HIDDEN);
-                lv_label_set_text(label_1, "");
+                gamescreen.hide();
+                startscreen.show();
+                lv_label_set_text(overlayscreen.label_1, "");
                 lvgl_port_unlock();
                 game_state = GAME_IDLE;
                 break;
@@ -418,18 +659,9 @@ static void event_handler_cancel(lv_event_t * e)
     lv_event_code_t code = lv_event_get_code(e);
     if(code == LV_EVENT_CLICKED) {
         lvgl_port_lock(-1);
-        display_time(0);
-        lv_label_set_text(startlabel, "START");
-        lv_obj_clear_flag(startbtn, LV_OBJ_FLAG_HIDDEN);
-        lv_obj_add_flag(cancelbtn, LV_OBJ_FLAG_HIDDEN);
-        lv_obj_add_flag(testbtn, LV_OBJ_FLAG_HIDDEN);
-        lv_obj_add_flag(seven1, LV_OBJ_FLAG_HIDDEN);
-        lv_obj_add_flag(seven2, LV_OBJ_FLAG_HIDDEN);
-        lv_obj_add_flag(seven3, LV_OBJ_FLAG_HIDDEN);
-        lv_obj_add_flag(seven4, LV_OBJ_FLAG_HIDDEN);
-        lv_obj_add_flag(seven5, LV_OBJ_FLAG_HIDDEN);
-        lv_label_set_text(label_1, "Spiel abgebrochen");
-        lv_obj_set_style_bg_color(lv_scr_act(), lv_color_hex(0xe4032e), LV_PART_MAIN);
+        gamescreen.hide();
+        startscreen.show();
+        lv_label_set_text(overlayscreen.label_1, "Spiel abgebrochen");
         lvgl_port_unlock();
         game_state = GAME_IDLE;
     }
@@ -623,79 +855,10 @@ void setup()
     Serial.println("Creating UI");
 
     lvgl_port_lock(-1);
-
-    lv_obj_set_style_bg_color(lv_scr_act(), lv_color_hex(0xe4032e), LV_PART_MAIN);
-
-    /*
-    lv_obj_t *label = lv_label_create(lv_scr_act());
-    lv_label_set_text(label, "12.345");
-    lv_obj_set_style_text_font(label, &lv_font_dosis_340, 0);
-    lv_obj_align(label, LV_ALIGN_TOP_MID, 0, 0);
-    */
-
-    label_1 = lv_label_create(lv_scr_act());
-    lv_label_set_text(label_1, "");
-    lv_obj_set_style_text_font(label_1, &lv_font_caveat_80, 0);
-    lv_obj_align(label_1, LV_ALIGN_BOTTOM_MID, 0, -90);
-
-    startbtn = lv_btn_create(lv_scr_act());
-    lv_obj_set_style_bg_color(startbtn, lv_color_hex(0xc5c405), LV_PART_MAIN);
-    lv_obj_set_style_text_color(startbtn, lv_color_black(), LV_PART_MAIN);
-    lv_obj_add_event_cb(startbtn, event_handler_start, LV_EVENT_ALL, NULL);
-    lv_obj_align(startbtn, LV_ALIGN_BOTTOM_MID, 0, -2);
-    startlabel = lv_label_create(startbtn);
-    lv_label_set_text(startlabel, "START");
-    lv_obj_set_style_text_font(startlabel, &lv_font_robotocondensed_60, 0);
-    lv_obj_center(startlabel);
-
-    cancelbtn = lv_btn_create(lv_scr_act());
-    lv_obj_add_event_cb(cancelbtn, event_handler_cancel, LV_EVENT_ALL, NULL);
-    lv_obj_set_style_bg_color(cancelbtn, lv_color_hex(0xe4032e), LV_PART_MAIN);
-    lv_obj_set_style_text_color(cancelbtn, lv_color_black(), LV_PART_MAIN);
-    lv_obj_align(cancelbtn, LV_ALIGN_BOTTOM_RIGHT, -2, -2);
-    cancellabel = lv_label_create(cancelbtn);
-    lv_label_set_text(cancellabel, "STOPP");
-    lv_obj_set_style_text_font(cancellabel, &lv_font_robotocondensed_60, 0);
-    lv_obj_center(cancellabel);
-    lv_obj_add_flag(cancelbtn, LV_OBJ_FLAG_HIDDEN);
-
-    testbtn = lv_btn_create(lv_scr_act());
-    lv_obj_add_event_cb(testbtn, event_handler_test, LV_EVENT_ALL, NULL);
-    lv_obj_set_style_bg_color(testbtn, lv_color_hex(0xe4032e), LV_PART_MAIN);
-    lv_obj_set_style_text_color(testbtn, lv_color_black(), LV_PART_MAIN);
-    lv_obj_align(testbtn, LV_ALIGN_BOTTOM_LEFT, 2, -2);
-    testlabel = lv_label_create(testbtn);
-    lv_label_set_text(testlabel, "TEST");
-    lv_obj_set_style_text_font(testlabel, &lv_font_robotocondensed_60, 0);
-    lv_obj_center(testlabel);
-    lv_obj_add_flag(testbtn, LV_OBJ_FLAG_HIDDEN);
-
-    seven1 = lv_7seg_create(lv_scr_act(), 170, 320);
-    lv_obj_align(seven1, LV_ALIGN_TOP_LEFT, 5, 0);
-
-    seven2 = lv_7seg_create(lv_scr_act(), 170, 320);
-    lv_obj_align(seven2, LV_ALIGN_TOP_LEFT, 5 + 150, 0);
-
-    seven3 = lv_7seg_create(lv_scr_act(), 170, 320);
-    lv_obj_align(seven3, LV_ALIGN_TOP_LEFT, 5 + 150 * 2, 0);
-
-    seven4 = lv_7seg_create(lv_scr_act(), 170, 320);
-    lv_obj_align(seven4, LV_ALIGN_TOP_LEFT, 5 + 150 * 3, 0);
-
-    seven5 = lv_7seg_create(lv_scr_act(), 170, 320  );
-    lv_obj_align(seven5, LV_ALIGN_TOP_LEFT, 5 + 150 * 4, 0);
-
-    lv_obj_add_flag(seven1, LV_OBJ_FLAG_HIDDEN);
-    lv_obj_add_flag(seven2, LV_OBJ_FLAG_HIDDEN);
-    lv_obj_add_flag(seven3, LV_OBJ_FLAG_HIDDEN);
-    lv_obj_add_flag(seven4, LV_OBJ_FLAG_HIDDEN);
-    lv_obj_add_flag(seven5, LV_OBJ_FLAG_HIDDEN);
-    lv_7seg_set_digit(seven1, ' ', false);
-    lv_7seg_set_digit(seven2, ' ', false);
-    lv_7seg_set_digit(seven3, ' ', false);
-    lv_7seg_set_digit(seven4, ' ', false);
-    lv_7seg_set_digit(seven5, ' ', false);
-    
+    mainscreen.init(lv_scr_act());
+    startscreen.init(mainscreen);
+    gamescreen.init(mainscreen);
+    overlayscreen.init(mainscreen);
     lvgl_port_unlock();
 
     buzzers.insert(buzzers.end(), BuzzerButton(1, true));
