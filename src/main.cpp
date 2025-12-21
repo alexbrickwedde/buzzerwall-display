@@ -31,7 +31,6 @@ extern lv_font_t lv_font_caveat_80;
 extern const lv_img_dsc_t difficulty1;
 extern const lv_img_dsc_t difficulty2;
 extern const lv_img_dsc_t difficulty3;
-
 class BuzzerButton {
 public:
     uint16_t buzzer_id;
@@ -95,11 +94,11 @@ class StartScreen {
     public:
         lv_obj_t *start_screen;
         lv_obj_t *start1btn;
-        //lv_obj_t *start1label;
+        lv_obj_t *start1label;
         lv_obj_t *start2btn;
-        //lv_obj_t *start2label;
+        lv_obj_t *start2label;
         lv_obj_t *start3btn;
-        //lv_obj_t *start3label;
+        lv_obj_t *start3label;
 
         void init(MainScreen& mainscreen) {
             start_screen = lv_obj_create(mainscreen.main_screen);
@@ -111,29 +110,35 @@ class StartScreen {
             lv_obj_clear_flag(start_screen, LV_OBJ_FLAG_SCROLLABLE);
             lv_obj_clear_flag(start_screen, LV_OBJ_FLAG_HIDDEN);
 
-            start1btn = lv_img_create(start_screen);
-            lv_img_set_src(start1btn, &difficulty1);
+            start1btn = lv_btn_create(start_screen);
             lv_obj_set_style_bg_color(start1btn, lv_color_hex(0xc5c405), LV_PART_MAIN);
             lv_obj_set_style_text_color(start1btn, lv_color_black(), LV_PART_MAIN);
-            lv_obj_set_size(start1btn, 200, 200);
+            lv_obj_set_size(start1btn, 250, 100);
             lv_obj_add_event_cb(start1btn, event_handler_start1, LV_EVENT_ALL, NULL);
             lv_obj_align(start1btn, LV_ALIGN_CENTER, 0, -100);
+            start1label = lv_img_create(start1btn);
+            lv_img_set_src(start1label, &difficulty1);
+            lv_obj_center(start1label);
 
-            start2btn = lv_img_create(start_screen);
-            lv_img_set_src(start2btn, &difficulty2);
+            start2btn = lv_btn_create(start_screen);
             lv_obj_set_style_bg_color(start2btn, lv_color_hex(0xc5c405), LV_PART_MAIN);
             lv_obj_set_style_text_color(start2btn, lv_color_black(), LV_PART_MAIN);
-            lv_obj_set_size(start2btn, 200, 200);
+            lv_obj_set_size(start2btn, 250, 100);
             lv_obj_add_event_cb(start2btn, event_handler_start2, LV_EVENT_ALL, NULL);
             lv_obj_align_to(start2btn, start1btn, LV_ALIGN_OUT_LEFT_TOP, -10, 0);
+            start2label = lv_img_create(start2btn);
+            lv_img_set_src(start2label, &difficulty2);
+            lv_obj_center(start2label);
 
-            start3btn = lv_img_create(start_screen);
-            lv_img_set_src(start3btn, &difficulty3);
+            start3btn = lv_btn_create(start_screen);
             lv_obj_set_style_bg_color(start3btn, lv_color_hex(0xc5c405), LV_PART_MAIN);
             lv_obj_set_style_text_color(start3btn, lv_color_black(), LV_PART_MAIN);
-            lv_obj_set_size(start3btn, 200, 200);
+            lv_obj_set_size(start3btn, 250, 250);
             lv_obj_add_event_cb(start3btn, event_handler_start3, LV_EVENT_ALL, NULL);
             lv_obj_align_to(start3btn, start1btn, LV_ALIGN_OUT_RIGHT_TOP, 10, 0);
+            start3label = lv_img_create(start3btn);
+            lv_img_set_src(start3label, &difficulty3);
+            lv_obj_center(start3label);
 
         }
 
