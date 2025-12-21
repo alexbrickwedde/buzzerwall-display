@@ -115,7 +115,7 @@ class StartScreen {
             lv_img_set_src(start1btn, &difficulty1);
             lv_obj_set_style_bg_color(start1btn, lv_color_hex(0xc5c405), LV_PART_MAIN);
             lv_obj_set_style_text_color(start1btn, lv_color_black(), LV_PART_MAIN);
-            lv_obj_set_size(start1btn, 250, 100);
+            lv_obj_set_size(start1btn, 200, 200);
             lv_obj_add_event_cb(start1btn, event_handler_start1, LV_EVENT_ALL, NULL);
             lv_obj_align(start1btn, LV_ALIGN_CENTER, 0, -100);
             start1label = lv_label_create(start1btn);
@@ -127,7 +127,7 @@ class StartScreen {
             lv_img_set_src(start2btn, &difficulty2);
             lv_obj_set_style_bg_color(start2btn, lv_color_hex(0xc5c405), LV_PART_MAIN);
             lv_obj_set_style_text_color(start2btn, lv_color_black(), LV_PART_MAIN);
-            lv_obj_set_size(start2btn, 250, 100);
+            lv_obj_set_size(start2btn, 200, 200);
             lv_obj_add_event_cb(start2btn, event_handler_start2, LV_EVENT_ALL, NULL);
             lv_obj_align_to(start2btn, start1btn, LV_ALIGN_OUT_LEFT_TOP, -10, 0);
             start2label = lv_label_create(start2btn);
@@ -139,7 +139,7 @@ class StartScreen {
             lv_img_set_src(start3btn, &difficulty3);
             lv_obj_set_style_bg_color(start3btn, lv_color_hex(0xc5c405), LV_PART_MAIN);
             lv_obj_set_style_text_color(start3btn, lv_color_black(), LV_PART_MAIN);
-            lv_obj_set_size(start3btn, 250, 100);
+            lv_obj_set_size(start3btn, 200, 200);
             lv_obj_add_event_cb(start3btn, event_handler_start3, LV_EVENT_ALL, NULL);
             lv_obj_align_to(start3btn, start1btn, LV_ALIGN_OUT_RIGHT_TOP, 10, 0);
             start3label = lv_label_create(start3btn);
