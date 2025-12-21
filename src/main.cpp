@@ -12,9 +12,9 @@
 #include <atomic>
 
 static void twai_send_message(uint32_t id, const uint8_t* data, uint8_t len);
-static void event_handler_start1(lv_event_t * e);
-static void event_handler_start2(lv_event_t * e);
-static void event_handler_start3(lv_event_t * e);
+static void event_handler_startMedium(lv_event_t * e);
+static void event_handler_startSmall(lv_event_t * e);
+static void event_handler_startLarge(lv_event_t * e);
 static void event_handler_ok(lv_event_t * e);
 static void event_handler_cancel(lv_event_t * e);
 static void event_handler_test(lv_event_t * e);
@@ -93,12 +93,12 @@ OverlayScreen overlayscreen;
 class StartScreen {
     public:
         lv_obj_t *start_screen;
-        lv_obj_t *start1btn;
-        lv_obj_t *start1label;
-        lv_obj_t *start2btn;
-        lv_obj_t *start2label;
-        lv_obj_t *start3btn;
-        lv_obj_t *start3label;
+        lv_obj_t *startMediumBtn;
+        lv_obj_t *startMediumLabel;
+        lv_obj_t *startSmallBtn;
+        lv_obj_t *startSmallLabel;
+        lv_obj_t *startLargeBtn;
+        lv_obj_t *startLargeLabel;
 
         void init(MainScreen& mainscreen) {
             start_screen = lv_obj_create(mainscreen.main_screen);
@@ -110,35 +110,35 @@ class StartScreen {
             lv_obj_clear_flag(start_screen, LV_OBJ_FLAG_SCROLLABLE);
             lv_obj_clear_flag(start_screen, LV_OBJ_FLAG_HIDDEN);
 
-            start1btn = lv_btn_create(start_screen);
-            lv_obj_set_style_bg_color(start1btn, lv_color_hex(0xc5c405), LV_PART_MAIN);
-            lv_obj_set_style_text_color(start1btn, lv_color_black(), LV_PART_MAIN);
-            lv_obj_set_size(start1btn, 250, 250);
-            lv_obj_add_event_cb(start1btn, event_handler_start1, LV_EVENT_ALL, NULL);
-            lv_obj_align(start1btn, LV_ALIGN_CENTER, 0, -100);
-            start1label = lv_img_create(start1btn);
-            lv_img_set_src(start1label, &difficulty1);
-            lv_obj_center(start1label);
+            startMediumBtn = lv_btn_create(start_screen);
+            lv_obj_set_style_bg_color(startMediumBtn, lv_color_hex(0xc5c405), LV_PART_MAIN);
+            lv_obj_set_style_text_color(startMediumBtn, lv_color_black(), LV_PART_MAIN);
+            lv_obj_set_size(startMediumBtn, 250, 250);
+            lv_obj_add_event_cb(startMediumBtn, event_handler_startMedium, LV_EVENT_ALL, NULL);
+            lv_obj_align(startMediumBtn, LV_ALIGN_CENTER, 0, -100);
+            startMediumLabel = lv_img_create(startMediumBtn);
+            lv_img_set_src(startMediumLabel, &difficulty1);
+            lv_obj_center(startMediumLabel);
 
-            start2btn = lv_btn_create(start_screen);
-            lv_obj_set_style_bg_color(start2btn, lv_color_hex(0xc5c405), LV_PART_MAIN);
-            lv_obj_set_style_text_color(start2btn, lv_color_black(), LV_PART_MAIN);
-            lv_obj_set_size(start2btn, 250, 250);
-            lv_obj_add_event_cb(start2btn, event_handler_start2, LV_EVENT_ALL, NULL);
-            lv_obj_align_to(start2btn, start1btn, LV_ALIGN_OUT_LEFT_TOP, -10, 0);
-            start2label = lv_img_create(start2btn);
-            lv_img_set_src(start2label, &difficulty2);
-            lv_obj_center(start2label);
+            startSmallBtn = lv_btn_create(start_screen);
+            lv_obj_set_style_bg_color(startSmallBtn, lv_color_hex(0xc5c405), LV_PART_MAIN);
+            lv_obj_set_style_text_color(startSmallBtn, lv_color_black(), LV_PART_MAIN);
+            lv_obj_set_size(startSmallBtn, 250, 250);
+            lv_obj_add_event_cb(startSmallBtn, event_handler_startSmall, LV_EVENT_ALL, NULL);
+            lv_obj_align_to(startSmallBtn, startMediumBtn, LV_ALIGN_OUT_LEFT_TOP, -10, 0);
+            startSmallLabel = lv_img_create(startSmallBtn);
+            lv_img_set_src(startSmallLabel, &difficulty2);
+            lv_obj_center(startSmallLabel);
 
-            start3btn = lv_btn_create(start_screen);
-            lv_obj_set_style_bg_color(start3btn, lv_color_hex(0xc5c405), LV_PART_MAIN);
-            lv_obj_set_style_text_color(start3btn, lv_color_black(), LV_PART_MAIN);
-            lv_obj_set_size(start3btn, 250, 250);
-            lv_obj_add_event_cb(start3btn, event_handler_start3, LV_EVENT_ALL, NULL);
-            lv_obj_align_to(start3btn, start1btn, LV_ALIGN_OUT_RIGHT_TOP, 10, 0);
-            start3label = lv_img_create(start3btn);
-            lv_img_set_src(start3label, &difficulty3);
-            lv_obj_center(start3label);
+            startLargeBtn = lv_btn_create(start_screen);
+            lv_obj_set_style_bg_color(startLargeBtn, lv_color_hex(0xc5c405), LV_PART_MAIN);
+            lv_obj_set_style_text_color(startLargeBtn, lv_color_black(), LV_PART_MAIN);
+            lv_obj_set_size(startLargeBtn, 250, 250);
+            lv_obj_add_event_cb(startLargeBtn, event_handler_startLarge, LV_EVENT_ALL, NULL);
+            lv_obj_align_to(startLargeBtn, startMediumBtn, LV_ALIGN_OUT_RIGHT_TOP, 10, 0);
+            startLargeLabel = lv_img_create(startLargeBtn);
+            lv_img_set_src(startLargeLabel, &difficulty3);
+            lv_obj_center(startLargeLabel);
 
         }
 
@@ -357,6 +357,7 @@ enum GameState {
 };
 
 GameState game_state = GAME_IDLE;
+uint8_t game_variant = 0;
 uint8_t current_round = 0;
 uint16_t waitforbuzzer_index = 0xffff;
 uint16_t waitforbuzzer_id = 0;
@@ -588,12 +589,13 @@ void game_tick() {
     }
 }
 
-static void event_handler_start1(lv_event_t * e)
+static void event_handler_startMedium(lv_event_t * e)
 {
     lv_event_code_t code = lv_event_get_code(e);
     if(code == LV_EVENT_CLICKED) {
         switch (game_state) {
             case GAME_IDLE:
+                game_variant = 2;
                 game_state = GAME_READYSETGO;
                 break;
 
@@ -603,12 +605,13 @@ static void event_handler_start1(lv_event_t * e)
     }
 }
 
-static void event_handler_start2(lv_event_t * e)
+static void event_handler_startSmall(lv_event_t * e)
 {
     lv_event_code_t code = lv_event_get_code(e);
     if(code == LV_EVENT_CLICKED) {
         switch (game_state) {
             case GAME_IDLE:
+                game_variant = 1;
                 game_state = GAME_READYSETGO;
                 break;
 
@@ -618,12 +621,13 @@ static void event_handler_start2(lv_event_t * e)
     }
 }
 
-static void event_handler_start3(lv_event_t * e)
+static void event_handler_startLarge(lv_event_t * e)
 {
     lv_event_code_t code = lv_event_get_code(e);
     if(code == LV_EVENT_CLICKED) {
         switch (game_state) {
             case GAME_IDLE:
+                game_variant = 3;
                 game_state = GAME_READYSETGO;
                 break;
 
