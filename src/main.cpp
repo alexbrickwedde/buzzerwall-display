@@ -117,7 +117,7 @@ class StartScreen {
             lv_obj_add_event_cb(startMediumBtn, event_handler_startMedium, LV_EVENT_ALL, NULL);
             lv_obj_align(startMediumBtn, LV_ALIGN_CENTER, 0, -100);
             startMediumLabel = lv_img_create(startMediumBtn);
-            lv_img_set_src(startMediumLabel, &difficulty1);
+            lv_img_set_src(startMediumLabel, &difficulty2);
             lv_obj_center(startMediumLabel);
 
             startSmallBtn = lv_btn_create(start_screen);
@@ -127,7 +127,7 @@ class StartScreen {
             lv_obj_add_event_cb(startSmallBtn, event_handler_startSmall, LV_EVENT_ALL, NULL);
             lv_obj_align_to(startSmallBtn, startMediumBtn, LV_ALIGN_OUT_LEFT_TOP, -10, 0);
             startSmallLabel = lv_img_create(startSmallBtn);
-            lv_img_set_src(startSmallLabel, &difficulty2);
+            lv_img_set_src(startSmallLabel, &difficulty1);
             lv_obj_center(startSmallLabel);
 
             startLargeBtn = lv_btn_create(start_screen);
